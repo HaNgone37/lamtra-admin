@@ -1,0 +1,123 @@
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/services/AuthContext'
+import { Layout } from '@/components/Layout'
+import { Sidebar } from '@/components/Sidebar'
+import { Login } from '@/pages/Login'
+import { Dashboard } from '@/components/Dashboard'
+import { Products } from '@/pages/Products'
+import { Orders } from '@/pages/Orders'
+import { Employees } from '@/pages/Employees'
+import { Settings } from '@/pages/Settings'
+import { Branches } from '@/pages/Branches'
+import Vouchers from '@/pages/Vouchers'
+import Inventory from '@/pages/Inventory'
+import NewsPage from '@/pages/News'
+import AnalyticsPage from '@/pages/Analytics'
+import { supabase } from '@/utils/supabaseClient'
+import { Branch } from '@/types'
+
+function App() {
+  const { user, loading, logout } = useAuth()
+  const [currentPage, setCurrentPage] = useState('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [branchInfo, setBranchInfo] = useState<Branch | null>(null)
+
+  // Fetch branch info if user has branchid
+  useEffect(() => {
+    if (user?.branchid && user?.branchid !== '') {
+      fetchBranchInfo(user.branchid)
+    }
+  }, [user?.branchid])
+
+  const fetchBranchInfo = async (branchId: string) => {
+    try {
+      const { data } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('branchid', branchId)
+        .single()
+      
+      if (data) {
+        setBranchInfo(data)
+      }
+    } catch (error) {
+      console.error('Error fetching branch info:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center" style={{ backgroundColor: '#F4F7FE' }}>
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl mb-4">
+            <span className="text-3xl animate-bounce">⏳</span>
+          </div>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: '#2B3674' }}>
+            LAM TRÀ
+          </h1>
+          <p className="text-gray-600">Đang khởi động hệ thống...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Nếu chưa đăng nhập, hiển thị Login page
+  if (!user) {
+    return <Login />
+  }
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard userRole={user.role} branchId={user.branchid} />
+      case 'products':
+        return <Products />
+      case 'orders':
+        return <Orders />
+      case 'branches':
+        return <Branches />
+      case 'employees':
+        return <Employees />
+      case 'inventory':
+        return <Inventory />
+      case 'analytics':
+        return <AnalyticsPage />
+      case 'news':
+        return <NewsPage />
+      case 'vouchers':
+        return <Vouchers />
+      case 'settings':
+        return <Settings />
+      default:
+        return <Dashboard userRole={user.role} branchId={user.branchid} />
+    }
+  }
+
+  return (
+    <div className="flex h-screen" style={{ backgroundColor: '#F4F7FE' }}>
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
+        userRole={user.role}
+        branchName={branchInfo?.name || 'Chi nhánh chính'}
+        onLogout={logout}
+      />
+
+      <Layout
+        sidebarOpen={sidebarOpen}
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        onLogout={logout}
+        userName={user.name}
+        userRole={user.role}
+        branchName={branchInfo?.name || 'Chi nhánh chính'}
+        branchId={user.branchid}
+      >
+        {renderPage()}
+      </Layout>
+    </div>
+  )
+}
+
+export default App
