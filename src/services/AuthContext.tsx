@@ -51,9 +51,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setUser(userData)
         localStorage.setItem('user', JSON.stringify(userData))
+        
+        // Save RBAC keys
+        localStorage.setItem('userRole', userData.role)
+        localStorage.setItem('userBranchId', userData.branchid || '')
       } else {
         // Clear stored user if session is invalid
         localStorage.removeItem('user')
+        localStorage.removeItem('userRole')
+        localStorage.removeItem('userBranchId')
         setUser(null)
       }
     } catch (error) {
@@ -95,6 +101,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         setUser(userData)
         localStorage.setItem('user', JSON.stringify(userData))
+        
+        // CRITICAL: Save role and branchid for RBAC in Sidebar and pages
+        localStorage.setItem('userRole', userData.role)
+        localStorage.setItem('userBranchId', userData.branchid || '')
       }
     } catch (error) {
       console.error('Error logging in:', error)
@@ -109,6 +119,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await supabase.auth.signOut()
       setUser(null)
       localStorage.removeItem('user')
+      localStorage.removeItem('userRole')
+      localStorage.removeItem('userBranchId')
     } catch (error) {
       console.error('Error logging out:', error)
     }

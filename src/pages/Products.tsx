@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/Card'
 import { Product, Category, Size, Topping } from '@/types'
-import { Plus, Edit2, Trash2, Package, Layers, Maximize2, Sparkles } from 'lucide-react'
+import { Plus, Edit3, Trash2, Package, Layers, Maximize2, Sparkles } from 'lucide-react'
 import Toast from '@/components/Toast'
 import AddProductModal from '@/components/AddProductModal'
 import EditProductModal from '@/components/EditProductModal'
@@ -417,7 +417,7 @@ export const Products: React.FC = () => {
                             onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
                             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                           >
-                            <Edit2 size={16} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(product.productid)}
@@ -499,7 +499,7 @@ export const Products: React.FC = () => {
                             onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
                             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                           >
-                            <Edit2 size={16} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(cat.categoryid)}
@@ -581,7 +581,7 @@ export const Products: React.FC = () => {
                             onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
                             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                           >
-                            <Edit2 size={16} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteSize(size.sizeid)}
@@ -680,7 +680,7 @@ export const Products: React.FC = () => {
                             onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
                             onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                           >
-                            <Edit2 size={16} />
+                            <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteTopping(topping.toppingid)}

@@ -441,7 +441,9 @@ export default function Vouchers() {
                               </td>
                               <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                 <div style={{
-                                  display: 'inline-block',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
                                   padding: '6px 12px',
                                   borderRadius: '8px',
                                   backgroundColor: isValid ? COLORS.successBg : COLORS.warningBg,
@@ -449,7 +451,13 @@ export default function Vouchers() {
                                   fontSize: '12px',
                                   fontWeight: '600'
                                 }}>
-                                  {isValid ? '✅ Còn hiệu lực' : '❌ Đã hết hạn'}
+                                  <span style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    backgroundColor: isValid ? COLORS.success : COLORS.warning
+                                  }} />
+                                  {isValid ? 'Còn hiệu lực' : 'Đã hết hạn'}
                                 </div>
                               </td>
                             </tr>
@@ -810,7 +818,7 @@ export default function Vouchers() {
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      {pointsSaving ? 'Đang lưu...' : '✅ Lưu Cấu Hình'}
+                      {pointsSaving ? 'Đang lưu...' : 'Lưu Cấu Hình'}
                     </button>
                   </div>
                 </>

@@ -19,14 +19,20 @@ export const authService = {
           .eq('accountid', data.user.id)
           .single()
         
-        return {
+        const user: User = {
           email: data.user.email || '',
           name: data.user.user_metadata?.name || '',
           accountid: data.user.id,
           role: account?.role || 'staff',
-          branchid: account?.branchid || '',
+          branchid: account?.branchid || null,
           employeeid: account?.employeeid || ''
         }
+
+        // Save role and branchid to localStorage
+        localStorage.setItem('userRole', user.role)
+        localStorage.setItem('userBranchId', user.branchid || '')
+
+        return user
       }
       
       return null
@@ -40,6 +46,11 @@ export const authService = {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      
+      // Clear localStorage
+      localStorage.removeItem('userRole')
+      localStorage.removeItem('userBranchId')
+      localStorage.removeItem('user')
     } catch (error) {
       console.error('Error logging out:', error)
       throw error

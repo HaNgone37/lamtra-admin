@@ -124,8 +124,8 @@ export const Branches: React.FC = () => {
     }
   }
 
-  const handleOpenMaps = (latitude: number, longitude: number) => {
-    const url = `https://www.google.com/maps/@${latitude},${longitude},15z`
+  const handleOpenMaps = (address: string) => {
+    const url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address)
     window.open(url, '_blank')
   }
 
@@ -226,7 +226,7 @@ export const Branches: React.FC = () => {
                           {branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)}
                         </span>
                         <button
-                          onClick={() => handleOpenMaps(branch.latitude, branch.longitude)}
+                          onClick={() => handleOpenMaps(branch.address)}
                           className="p-2 rounded-lg transition-colors"
                           style={{ backgroundColor: '#EBF3FF', color: '#4318FF' }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D1E0FF'}

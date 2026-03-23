@@ -139,25 +139,54 @@ export const branchInventoryService = {
 
   /**
    * Lấy tồn kho của 1 chi nhánh cụ thể
+   * ⚠️ DEBUG: branchId từ localStorage là STRING, cần ép thành NUMBER!
    */
   async getBranchInventoryByBranch(branchId: string): Promise<BranchInventory[]> {
     try {
+      // ===== BƯỚC 1: Ép kiểu branchId =====
+      const branchIdNum = Number(branchId)
+      console.log('🔍 [getBranchInventoryByBranch] START')
+      console.log('📥 branchId input (string):', branchId)
+      console.log('📤 branchId converted (number):', branchIdNum)
+      console.log('⚠️  typeof branchIdNum:', typeof branchIdNum)
+
+      // ===== BƯỚC 2: Fetch tồn kho + JOIN ingredients =====
       const { data, error } = await supabase
         .from('branchinventory')
-        .select('*, ingredients:ingredients(name, unit, minstocklevel)')
-        .eq('branchid', branchId)
+        .select('*, ingredients:ingredients(name, unit, baseprice, minstocklevel)')
+        .eq('branchid', branchIdNum) // 🔑 ĐÂY LÀ KHÓA: dùng NUMBER, không STRING!
+        .order('ingredientid', { ascending: true })
+
+      console.log('📊 Supabase response:', {
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        dataLength: data?.length || 0,
+        data: data,
+      })
 
       if (error) throw error
-      
-      return (data || []).map(item => ({
-        branchid: item.branchid,
-        ingredientid: item.ingredientid,
-        currentstock: item.currentstock,
-        minstocklevel: item.minstocklevel,
-        ingredient: item.ingredients as any,
-      }))
+
+      // ===== BƯỚC 3: Map dữ liệu =====
+      const mappedData = (data || []).map((item: any) => {
+        console.log('🔗 Mapping item:', {
+          branchid: item.branchid,
+          ingredientid: item.ingredientid,
+          currentstock: item.currentstock,
+          hasIngredient: !!item.ingredients,
+        })
+        return {
+          branchid: item.branchid,
+          ingredientid: item.ingredientid,
+          currentstock: item.currentstock,
+          minstocklevel: item.minstocklevel,
+          ingredient: item.ingredients as any,
+        }
+      })
+
+      console.log('✅ [getBranchInventoryByBranch] SUCCESS - returned', mappedData.length, 'items')
+      return mappedData
     } catch (error) {
-      console.error('❌ Error fetching branch inventory:', error)
+      console.error('❌ [getBranchInventoryByBranch] ERROR:', error)
       throw error
     }
   },

@@ -17,18 +17,29 @@ export const branchService = {
   },
 
   // Get single branch by ID
+  // ⚠️ DEBUG: branchId từ localStorage là STRING, ép thành NUMBER!
   async getBranchById(branchId: string): Promise<Branch | null> {
-    const { data, error } = await supabase
-      .from('branches')
-      .select('*')
-      .eq('branchid', branchId)
-      .single()
+    try {
+      const branchIdNum = Number(branchId)
+      console.log('🔍 [getBranchById] Input:', branchId, '-> Converted:', branchIdNum)
 
-    if (error) {
-      console.error('Error fetching branch:', error)
+      const { data, error } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('branchid', branchIdNum) // 🔑 Dùng NUMBER, không STRING!
+        .single()
+
+      if (error) {
+        console.error('❌ [getBranchById] Error:', error)
+        throw error
+      }
+
+      console.log('✅ [getBranchById] Found:', data)
+      return data
+    } catch (error) {
+      console.error('❌ [getBranchById] Exception:', error)
       throw error
     }
-    return data
   },
 
   // Create new branch

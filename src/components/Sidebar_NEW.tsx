@@ -88,11 +88,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Kho',
       icon: <Warehouse size={20} strokeWidth={2} />,
     },
-    {
-      id: 'customers',
-      label: 'Khách Hàng',
-      icon: <Users size={20} strokeWidth={2} />,
-    },
     // Chỉ show cho Super Admin
     {
       id: 'branches',
@@ -122,9 +117,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       // Super Admin xem tất cả
       return allMenuItems
     } else {
-      // Branch Manager và Staff - chỉ xem: Tổng Quan, Đơn Hàng, Thực Đơn, Nhân Sự, Kho, Khách Hàng
+      // Branch Manager và Staff - chỉ xem: Tổng Quan, Đơn Hàng, Thực Đơn, Nhân Sự, Kho
       return allMenuItems.filter(item => 
-        ['dashboard', 'orders', 'products', 'employees', 'inventory', 'customers'].includes(item.id)
+        ['dashboard', 'orders', 'products', 'employees', 'inventory'].includes(item.id)
       )
     }
   }, [isSuperAdmin])

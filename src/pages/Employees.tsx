@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/Card'
 import { EmployeeFormData } from '@/services/employeeService'
 import { Branch } from '@/types'
-import { Plus, Edit2, UserPlus, X, Search, ChevronDown, Loader } from 'lucide-react'
+import { Plus, Edit3, UserPlus, X, Search, ChevronDown, Loader } from 'lucide-react'
 import { supabase } from '@/utils/supabaseClient'
 import Toast from '@/components/Toast'
 
@@ -93,21 +93,10 @@ export const Employees: React.FC = () => {
     status: 'Đang làm'
   })
 
-  // Get role and branchId from localStorage
-  const getUserFromStorage = () => {
-    try {
-      const userStr = localStorage.getItem('user')
-      return userStr ? JSON.parse(userStr) : null
-    } catch (e) {
-      console.error('Lỗi parse user từ localStorage:', e)
-      return null
-    }
-  }
-  
-  const currentUser = getUserFromStorage()
-  const userRole = currentUser?.role || 'staff'
-  const userBranchId = currentUser?.branchid || ''
-  const isSuperAdmin = userRole?.toLowerCase().replace(/\s/g, '') === 'superadmin'
+  // Get role and branchId from localStorage (set during login)
+  const userRole = localStorage.getItem('userRole') || 'staff'
+  const userBranchId = localStorage.getItem('userBranchId') || ''
+  const isSuperAdmin = userRole?.toLowerCase().trim() === 'super admin' || userRole?.toLowerCase() === 'super_admin'
 
   // STEP 1: Load branches only once on component mount
   useEffect(() => {
@@ -520,7 +509,7 @@ export const Employees: React.FC = () => {
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EBF3FF'}
                           title="Sửa"
                         >
-                          <Edit2 size={16} />
+                          <Edit3 size={16} />
                         </button>
                         <button
                           onClick={() => handleGrantAccount(employee)}
@@ -639,7 +628,7 @@ export const Employees: React.FC = () => {
                     Đang xử lý...
                   </>
                 ) : (
-                  '✅ Thêm nhân viên'
+                  'Thêm nhân viên'
                 )}
               </button>
               <button
@@ -754,7 +743,7 @@ export const Employees: React.FC = () => {
                     Đang xử lý...
                   </>
                 ) : (
-                  '✅ Lưu thay đổi'
+                  'Lưu thay đổi'
                 )}
               </button>
               <button
@@ -802,7 +791,7 @@ export const Employees: React.FC = () => {
 
               <div style={{ backgroundColor: '#FFF7E6', padding: '16px', borderRadius: '12px' }}>
                 <p className="text-sm font-semibold mb-3" style={{ color: '#FF9900' }}>
-                  📋 Hướng dẫn cấp tài khoản:
+                  Hướng dẫn cấp tài khoản:
                 </p>
                 <ol className="text-xs space-y-2" style={{ color: '#8F9CB8' }}>
                   <li>1. Liên hệ Admin Supabase để tạo user trong Auth</li>
@@ -824,7 +813,7 @@ export const Employees: React.FC = () => {
                   style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
                 />
                 <p className="text-xs mt-2" style={{ color: '#8F9CB8' }}>
-                  💡 Hãy copy UUID từ Supabase Auth sau khi tạo user
+                  Hãy copy UUID từ Supabase Auth sau khi tạo user
                 </p>
               </div>
             </div>

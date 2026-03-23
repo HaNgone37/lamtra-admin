@@ -180,7 +180,7 @@ export default function NewsPage() {
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ color: colors.text, fontSize: '32px', fontWeight: '700', margin: 0 }}>
-          📰 Quản lý Bài viết
+          Quản lý Bài viết
         </h1>
         <p style={{ color: colors.textLight, fontSize: '14px', margin: '8px 0 0 0' }}>
           Tạo, chỉnh sửa, và quản lý nội dung trên trang website

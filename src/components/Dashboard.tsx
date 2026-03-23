@@ -19,6 +19,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   userRole = 'staff',
   branchId
 }) => {
+  // Read from localStorage as source of truth for RBAC
+  const storedUserRole = localStorage.getItem('userRole') || userRole
+  const storedBranchId = localStorage.getItem('userBranchId') || branchId || ''
+  
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [dateRange, setDateRange] = useState<DateRange>(() => {
@@ -39,14 +43,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   useEffect(() => {
     loadOrders()
     // Subscribe to realtime updates
-    const subscription = orderService.subscribeToOrders(branchId, () => {
+    const subscription = orderService.subscribeToOrders(storedBranchId, () => {
       loadOrders()
     })
     
     return () => {
       subscription.unsubscribe()
     }
-  }, [branchId])
+  }, [storedBranchId])
 
   const loadOrders = async () => {
     try {
@@ -54,8 +58,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
       let data = await orderService.getOrders()
       
       // Lọc dữ liệu theo chi nhánh nếu người dùng là Staff hoặc Manager
-      if ((userRole === 'staff' || userRole === 'manager') && branchId) {
-        data = data.filter(o => o.branchid === branchId)
+      if ((storedUserRole === 'staff' || storedUserRole === 'manager') && storedBranchId) {
+        data = data.filter(o => o.branchid === storedBranchId)
       }
       
       setOrders(data)
@@ -189,7 +193,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           Dashboard
         </h1>
         <p style={{ color: '#8F9CB8' }}>
-          {userRole === 'admin' ? 'Toàn bộ hệ thống' : `Chi nhánh ${branchId}`}
+          {storedUserRole === 'admin' ? 'Toàn bộ hệ thống' : `Chi nhánh ${storedBranchId}`}
         </p>
       </div>
 

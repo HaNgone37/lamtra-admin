@@ -13,6 +13,8 @@ import Vouchers from '@/pages/Vouchers'
 import Inventory from '@/pages/Inventory'
 import NewsPage from '@/pages/News'
 import AnalyticsPage from '@/pages/Analytics'
+import CustomersPage from '@/pages/Customers'
+// import BranchProductStatus from '@/pages/BranchProductStatus'
 import { supabase } from '@/utils/supabaseClient'
 import { Branch } from '@/types'
 
@@ -72,6 +74,8 @@ function App() {
         return <Dashboard userRole={user.role} branchId={user.branchid} />
       case 'products':
         return <Products />
+      // case 'branchmenu':
+      //   return <BranchProductStatus branchId={user.branchid} branchName={branchInfo?.name || 'Chi nhánh'} />
       case 'orders':
         return <Orders />
       case 'branches':
@@ -82,6 +86,8 @@ function App() {
         return <Inventory />
       case 'analytics':
         return <AnalyticsPage />
+      case 'customers':
+        return <CustomersPage />
       case 'news':
         return <NewsPage />
       case 'vouchers':
