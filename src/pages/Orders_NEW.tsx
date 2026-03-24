@@ -7,6 +7,8 @@ import { Eye, X, ChevronDown } from 'lucide-react'
 interface OrderWithDetails extends Order {
   customername?: string
   branchname?: string
+  discountamount: number; 
+  shippingfee: number;
 }
 
 interface OrderDetail {

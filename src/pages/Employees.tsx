@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/Card'
 import { EmployeeFormData } from '@/services/employeeService'
 import { Branch } from '@/types'
-import { Plus, Edit3, UserPlus, X, Search, ChevronDown, Loader } from 'lucide-react'
+import { Plus, Edit2, UserPlus, X, Search, ChevronDown, Loader, AlertCircle } from 'lucide-react'
 import { supabase } from '@/utils/supabaseClient'
 import Toast from '@/components/Toast'
+import { validateEmployeeForm, normalizeEmployeeData, EmployeeValidationErrors } from '@/utils/validationUtils'
 
 interface EmployeeWithBranch {
   employeeid: string
@@ -92,6 +93,7 @@ export const Employees: React.FC = () => {
     branchid: '',
     status: 'Đang làm'
   })
+  const [formErrors, setFormErrors] = useState<EmployeeValidationErrors>({})
 
   // Get role and branchId from localStorage (set during login)
   const userRole = localStorage.getItem('userRole') || 'staff'
@@ -258,6 +260,7 @@ export const Employees: React.FC = () => {
       branchid: isSuperAdmin ? '' : userBranchId,
       status: 'Đang làm'
     })
+    setFormErrors({})
     setShowAddModal(true)
   }
 
@@ -271,29 +274,39 @@ export const Employees: React.FC = () => {
       branchid: employee.branchid,
       status: employee.status
     })
+    setFormErrors({})
     setShowEditModal(true)
   }
 
   const handleAddEmployee = async () => {
-    if (!formData.fullname || !formData.email || !formData.branchid) {
-      setToast({ message: 'Vui lòng điền đầy đủ thông tin', type: 'error' })
+    // Validate form - chỉ validate fullname, email, phone
+    const errors = validateEmployeeForm(formData)
+    setFormErrors(errors)
+
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0]
+      setToast({ message: firstError || 'Vui lòng kiểm tra lại thông tin', type: 'error' })
       return
     }
-    
+
     setModalLoading(true)
     try {
+      // Normalize data before sending
+      const normalizedData = normalizeEmployeeData(formData)
+
       const { error } = await supabase.from('employees').insert([{
-        fullname: formData.fullname,
-        email: formData.email,
-        phone: formData.phone,
-        position: formData.position,
-        branchid: formData.branchid,
-        status: formData.status || 'Đang làm'
+        fullname: normalizedData.fullname,
+        email: normalizedData.email,
+        phone: normalizedData.phone,
+        position: normalizedData.position,
+        branchid: normalizedData.branchid,
+        status: normalizedData.status || 'Đang làm'
       }])
       if (error) throw error
       
-      setToast({ message: `✅ Thêm nhân viên ${formData.fullname} thành công!`, type: 'success' })
+      setToast({ message: `✅ Thêm nhân viên ${normalizedData.fullname} thành công!`, type: 'success' })
       setShowAddModal(false)
+      setFormErrors({})
       
       // Refresh employees list
       await refreshEmployees()
@@ -307,23 +320,37 @@ export const Employees: React.FC = () => {
 
   const handleUpdateEmployee = async () => {
     if (!selectedEmployee) return
+
+    // Validate form - chỉ validate fullname, email, phone
+    const errors = validateEmployeeForm(formData)
+    setFormErrors(errors)
+
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0]
+      setToast({ message: firstError || 'Vui lòng kiểm tra lại thông tin', type: 'error' })
+      return
+    }
     
     setModalLoading(true)
     try {
+      // Normalize data before sending
+      const normalizedData = normalizeEmployeeData(formData)
+
       const { error } = await supabase
         .from('employees')
         .update({
-          fullname: formData.fullname,
-          email: formData.email,
-          phone: formData.phone,
-          position: formData.position,
-          status: formData.status
+          fullname: normalizedData.fullname,
+          email: normalizedData.email,
+          phone: normalizedData.phone,
+          position: normalizedData.position,
+          status: normalizedData.status
         })
         .eq('employeeid', selectedEmployee.employeeid)
       if (error) throw error
       
-      setToast({ message: `✅ Cập nhật thông tin ${formData.fullname} thành công!`, type: 'success' })
+      setToast({ message: `✅ Cập nhật thông tin ${normalizedData.fullname} thành công!`, type: 'success' })
       setShowEditModal(false)
+      setFormErrors({})
       
       // Refresh employees list
       await refreshEmployees()
@@ -509,7 +536,7 @@ export const Employees: React.FC = () => {
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EBF3FF'}
                           title="Sửa"
                         >
-                          <Edit3 size={16} />
+                          <Edit2 size={16} />
                         </button>
                         <button
                           onClick={() => handleGrantAccount(employee)}
@@ -554,8 +581,18 @@ export const Employees: React.FC = () => {
                   value={formData.fullname}
                   onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: formErrors.fullname ? '2px solid #EF4444' : '1px solid #E0E5F2'
+                  }}
                 />
+                {formErrors.fullname && (
+                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
+                    <AlertCircle size={14} />
+                    <span className="text-xs">{formErrors.fullname}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Email</label>
@@ -564,18 +601,39 @@ export const Employees: React.FC = () => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: formErrors.email ? '2px solid #EF4444' : '1px solid #E0E5F2'
+                  }}
                 />
+                {formErrors.email && (
+                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
+                    <AlertCircle size={14} />
+                    <span className="text-xs">{formErrors.email}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Số điện thoại</label>
                 <input
                   type="tel"
+                  placeholder="Nhập số điện thoại (chỉ nhập được số)"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: formErrors.phone ? '2px solid #EF4444' : '1px solid #E0E5F2'
+                  }}
                 />
+                {formErrors.phone && (
+                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
+                    <AlertCircle size={14} />
+                    <span className="text-xs">{formErrors.phone}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Vị trí</label>
@@ -583,7 +641,11 @@ export const Employees: React.FC = () => {
                   value={formData.position}
                   onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: '1px solid #E0E5F2'
+                  }}
                 >
                   <option value="Pha chế">Pha chế</option>
                   <option value="Phục vụ">Phục vụ</option>
@@ -600,7 +662,11 @@ export const Employees: React.FC = () => {
                     value={formData.branchid}
                     onChange={(e) => setFormData({ ...formData, branchid: e.target.value })}
                     className="w-full px-4 py-2 rounded-lg"
-                    style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                    style={{ 
+                      backgroundColor: '#F4F7FE', 
+                      color: '#2B3674', 
+                      border: '1px solid #E0E5F2'
+                    }}
                   >
                     <option value="">Chọn chi nhánh</option>
                     {branches.map(branch => (
@@ -672,8 +738,18 @@ export const Employees: React.FC = () => {
                   value={formData.fullname}
                   onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: formErrors.fullname ? '2px solid #EF4444' : '1px solid #E0E5F2'
+                  }}
                 />
+                {formErrors.fullname && (
+                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
+                    <AlertCircle size={14} />
+                    <span className="text-xs">{formErrors.fullname}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Email</label>
@@ -682,18 +758,39 @@ export const Employees: React.FC = () => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: formErrors.email ? '2px solid #EF4444' : '1px solid #E0E5F2'
+                  }}
                 />
+                {formErrors.email && (
+                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
+                    <AlertCircle size={14} />
+                    <span className="text-xs">{formErrors.email}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Số điện thoại</label>
                 <input
                   type="tel"
+                  placeholder="Nhập số điện thoại (chỉ nhập được số)"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: formErrors.phone ? '2px solid #EF4444' : '1px solid #E0E5F2'
+                  }}
                 />
+                {formErrors.phone && (
+                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
+                    <AlertCircle size={14} />
+                    <span className="text-xs">{formErrors.phone}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Vị trí</label>
@@ -701,7 +798,11 @@ export const Employees: React.FC = () => {
                   value={formData.position}
                   onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: '1px solid #E0E5F2'
+                  }}
                 >
                   <option value="Pha chế">Pha chế</option>
                   <option value="Phục vụ">Phục vụ</option>
@@ -717,7 +818,11 @@ export const Employees: React.FC = () => {
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
+                  style={{ 
+                    backgroundColor: '#F4F7FE', 
+                    color: '#2B3674', 
+                    border: '1px solid #E0E5F2'
+                  }}
                 >
                   <option value="Đang làm">Đang làm</option>
                   <option value="Nghỉ việc">Nghỉ việc</option>
