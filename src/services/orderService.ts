@@ -84,7 +84,7 @@ export const orderService = {
     }
   },
 
-  subscribeToOrders(branchId?: string, callback?: (payload: any) => void) {
+  subscribeToOrders(_branchId?: string, callback?: (payload: any) => void) {
     let subscription = supabase
       .channel('orders')
       .on('postgres_changes', {

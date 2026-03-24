@@ -40,7 +40,7 @@ export default function EditProductModal({
         baseprice: product.baseprice.toString(),
         imageurl: product.imageurl,
         status: product.status,
-        categoryid: product.categoryid
+        categoryid: String(product.categoryid)
       })
     }
   }, [product, isOpen])
@@ -77,7 +77,7 @@ export default function EditProductModal({
     try {
       setLoading(true)
 
-      await productService.updateProduct(product.productid, {
+      await productService.updateProduct(String(product.productid), {
         name: formData.name.trim(),
         subtitle: formData.subtitle.trim(),
         description: formData.description.trim(),

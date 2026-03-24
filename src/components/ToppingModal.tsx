@@ -77,7 +77,7 @@ export default function ToppingModal({
       setLoading(true)
 
       if (isEdit && topping) {
-        await toppingService.updateTopping(topping.toppingid, {
+        await toppingService.updateTopping(String(topping.toppingid), {
           name: formData.name.trim(),
           price: parseFloat(formData.price),
           imageurl: formData.imageurl.trim() || 'https://via.placeholder.com/200',

@@ -27,7 +27,7 @@ function App() {
   // Fetch branch info if user has branchid
   useEffect(() => {
     if (user?.branchid && user?.branchid !== '') {
-      fetchBranchInfo(user.branchid)
+      fetchBranchInfo(String(user.branchid))
     }
   }, [user?.branchid])
 
@@ -71,7 +71,7 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard userRole={user.role} branchId={user.branchid} />
+        return <Dashboard userRole={user.role} branchId={user.branchid ? String(user.branchid) : undefined} />
       case 'products':
         return <Products />
       // case 'branchmenu':
@@ -95,7 +95,7 @@ function App() {
       case 'settings':
         return <Settings />
       default:
-        return <Dashboard userRole={user.role} branchId={user.branchid} />
+        return <Dashboard userRole={user.role} branchId={user.branchid ? String(user.branchid) : undefined} />
     }
   }
 
@@ -114,11 +114,9 @@ function App() {
       <Layout
         sidebarOpen={sidebarOpen}
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-        onLogout={logout}
         userName={user.name}
         userRole={user.role}
         branchName={branchInfo?.name || 'Chi nhánh chính'}
-        branchId={user.branchid}
       >
         {renderPage()}
       </Layout>

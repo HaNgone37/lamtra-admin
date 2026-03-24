@@ -1,15 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Menu, X, Bell, User as UserIcon } from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
   sidebarOpen: boolean
   onMenuClick: () => void
-  onLogout: () => void
   userName?: string
   userRole?: string
   branchName?: string
-  branchId?: string
 }
 
 /**
@@ -25,13 +23,11 @@ export const Layout: React.FC<LayoutProps> = ({
   children,
   sidebarOpen,
   onMenuClick,
-  onLogout,
   userName = 'User',
   userRole = 'staff',
-  branchName = 'Chi nhánh chính',
-  branchId = ''
+  branchName = 'Chi nhánh chính'
 }) => {
-  const [notificationCount, setNotificationCount] = useState(0)
+  const [notificationCount] = useState(0)
 
   const getRoleLabel = () => {
     if (!userRole) return 'Người dùng'

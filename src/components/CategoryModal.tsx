@@ -62,7 +62,7 @@ export default function CategoryModal({
       setLoading(true)
 
       if (isEdit && category) {
-        await categoryService.updateCategory(category.categoryid, {
+        await categoryService.updateCategory(String(category.categoryid), {
           name: formData.name.trim(),
           description: formData.description.trim()
         })

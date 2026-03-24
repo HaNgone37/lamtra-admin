@@ -1,52 +1,8 @@
 import { supabase } from '@/utils/supabaseClient'
+import type { Voucher, CustomerVoucher, VoucherStatistic, Customer } from '@/types'
 
-// ===== INTERFACES SCHEMA CHÍNH XÁC =====
-export interface Voucher {
-  voucherid: number
-  code: string
-  title: string
-  discountvalue: number
-  maxdiscount: number
-  minordervalue: number
-  discounttype: '%' | 'Tiền mặt'
-  expirydate: string
-  iswelcome: boolean
-  pointsrequired: number
-  created_at: string
-}
-
-export interface CustomerVoucher {
-  custvoucherid: number
-  customerid: number
-  voucherid: number
-  status: 'Chưa dùng' | 'Đã dùng' | 'Hết hạn'
-  reason: string
-  receiveddate: string
-  useddate?: string | null
-}
-
-export interface VoucherStatistic {
-  voucherid: number
-  code: string
-  title: string
-  discountvalue: number
-  discounttype: string
-  expirydate: string
-  issuedCount: number
-  usedCount: number
-  usageRate: string
-  pointsrequired: number
-  iswelcome: boolean
-}
-
-export interface Customer {
-  customerid: number
-  fullname: string
-  phone: string
-  email: string
-  totalpoints: number
-  membership: 'Đồng' | 'Bạc' | 'Vàng'
-}
+// Re-export types for backward compatibility
+export type { Voucher, CustomerVoucher, VoucherStatistic, Customer }
 
 export const voucherService = {
   // ===== TAB 1: VOUCHERS MANAGEMENT =====

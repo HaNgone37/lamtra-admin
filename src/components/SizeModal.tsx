@@ -66,7 +66,7 @@ export default function SizeModal({
       setLoading(true)
 
       if (isEdit && size) {
-        await sizeService.updateSize(size.sizeid, {
+        await sizeService.updateSize(String(size.sizeid), {
           name: formData.name.trim(),
           additionalprice: parseFloat(formData.additionalprice)
         })

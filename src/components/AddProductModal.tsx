@@ -72,7 +72,7 @@ export default function AddProductModal({
       })
 
       // Đồng bộ sản phẩm mới cho tất cả chi nhánh
-      await branchProductStatusService.syncProductToAllBranches(newProduct.productid)
+      await branchProductStatusService.syncProductToAllBranches(String(newProduct.productid))
 
       // Reset form
       setFormData({

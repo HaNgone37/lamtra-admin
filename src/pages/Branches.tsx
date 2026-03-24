@@ -81,7 +81,7 @@ export const Branches: React.FC = () => {
     if (!selectedBranch) return
 
     try {
-      await branchService.updateBranch(selectedBranch.branchid, formData)
+      await branchService.updateBranch(String(selectedBranch.branchid), formData)
       await loadBranches()
       setShowModal(false)
       alert('Cập nhật chi nhánh thành công!')
@@ -116,7 +116,7 @@ export const Branches: React.FC = () => {
 
   const handleToggleStatus = async (branch: Branch) => {
     try {
-      await branchService.toggleBranchStatus(branch.branchid, !branch.isactive)
+      await branchService.toggleBranchStatus(String(branch.branchid), !branch.isactive)
       await loadBranches()
     } catch (error) {
       console.error('Error toggling branch status:', error)

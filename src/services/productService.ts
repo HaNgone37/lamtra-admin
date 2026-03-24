@@ -379,7 +379,7 @@ export const branchProductStatusService = {
       const branches = await this.getAllBranches()
       
       for (const branch of branches) {
-        await this.createBranchProductStatus(branch.branchid, productId, 'Còn món')
+        await this.createBranchProductStatus(String(branch.branchid), productId, 'Còn món')
       }
     } catch (error) {
       console.error('Error syncing product to all branches:', error)

@@ -172,7 +172,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     
     orders.forEach(order => {
       // Simplified: use branch as proxy for product name
-      const productName = order.branchid || 'Unknown'
+      const productName = String(order.branchid) || 'Unknown'
       if (!productMap[productName]) {
         productMap[productName] = { name: productName, count: 0 }
       }
@@ -182,7 +182,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return Object.values(productMap)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
-      .map(p => ({ name: `Chi nhánh ${p.name.substring(0, 8)}`, value: p.count }))
+      .map(p => ({ name: `Chi nhánh ${String(p.name).substring(0, 8)}`, value: p.count }))
   }, [orders])
 
   return (

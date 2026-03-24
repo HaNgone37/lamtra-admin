@@ -5,6 +5,8 @@ import { Branch, Order } from '@/types'
 import { Eye, X, ChevronDown } from 'lucide-react'
 
 interface OrderWithDetails extends Order {
+  shippingfee: number
+  discountamount: number
   customername?: string
   branchname?: string
 }

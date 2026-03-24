@@ -389,14 +389,14 @@ export const Products: React.FC = () => {
                           <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#A0AEC0' }}>{product.subtitle}</p>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px', color: '#8F9CB8' }}>{getCategoryName(product.categoryid)}</td>
+                      <td style={{ padding: '12px 16px', color: '#8F9CB8' }}>{getCategoryName(String(product.categoryid))}</td>
                       <td style={{ padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>{product.baseprice?.toLocaleString()} VNĐ</td>
                       <td style={{ padding: '12px 16px' }}>
                         <TogglableStatusBadge
                           status={product.status}
                           type="product"
-                          onClick={() => handleProductStatusToggle(product.productid, product.status)}
-                          isLoading={productStatusLoading === product.productid}
+                          onClick={() => handleProductStatusToggle(String(product.productid), product.status)}
+                          isLoading={productStatusLoading === String(product.productid)}
                         />
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -420,7 +420,7 @@ export const Products: React.FC = () => {
                             <Edit3 size={16} />
                           </button>
                           <button
-                            onClick={() => handleDeleteProduct(product.productid)}
+                            onClick={() => handleDeleteProduct(String(product.productid))}
                             style={{
                               padding: '6px 12px',
                               borderRadius: '8px',
@@ -502,7 +502,7 @@ export const Products: React.FC = () => {
                             <Edit3 size={16} />
                           </button>
                           <button
-                            onClick={() => handleDeleteCategory(cat.categoryid)}
+                            onClick={() => handleDeleteCategory(String(cat.categoryid))}
                             style={{
                               padding: '6px 12px',
                               borderRadius: '8px',
@@ -584,7 +584,7 @@ export const Products: React.FC = () => {
                             <Edit3 size={16} />
                           </button>
                           <button
-                            onClick={() => handleDeleteSize(size.sizeid)}
+                            onClick={() => handleDeleteSize(String(size.sizeid))}
                             style={{
                               padding: '6px 12px',
                               borderRadius: '8px',
@@ -657,8 +657,8 @@ export const Products: React.FC = () => {
                         <TogglableStatusBadge
                           status={topping.isavailable}
                           type="topping"
-                          onClick={() => handleToppingStatusToggle(topping.toppingid, topping.isavailable)}
-                          isLoading={toppingStatusLoading === topping.toppingid}
+                          onClick={() => handleToppingStatusToggle(String(topping.toppingid), topping.isavailable)}
+                          isLoading={toppingStatusLoading === String(topping.toppingid)}
                         />
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -683,7 +683,7 @@ export const Products: React.FC = () => {
                             <Edit3 size={16} />
                           </button>
                           <button
-                            onClick={() => handleDeleteTopping(topping.toppingid)}
+                            onClick={() => handleDeleteTopping(String(topping.toppingid))}
                             style={{
                               padding: '6px 12px',
                               borderRadius: '8px',

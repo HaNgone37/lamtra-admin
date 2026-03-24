@@ -1,26 +1,8 @@
 import { supabase } from '@/utils/supabaseClient'
-import { Branch } from '@/types'
+import type { Branch, EmployeeWithBranch, EmployeeFormData } from '@/types'
 
-export interface EmployeeWithBranch {
-  employeeid: string
-  fullname: string
-  email: string
-  phone: string
-  position: string
-  status: string
-  branchid: string
-  created_at?: string
-  branches?: any  // Allow any type to handle Supabase's return format
-}
-
-export interface EmployeeFormData {
-  fullname: string
-  email: string
-  phone: string
-  position: string
-  branchid: string
-  status: string
-}
+// Re-export types for backward compatibility
+export type { EmployeeWithBranch, EmployeeFormData }
 
 export const employeeService = {
   // Fetch all employees with branch info
@@ -46,7 +28,7 @@ export const employeeService = {
         return []
       }
       
-      return data
+      return data as unknown as EmployeeWithBranch[]
     } catch (err) {
       console.error('Chi tiết lỗi Supabase (getAllEmployees):', err)
       throw err
@@ -83,7 +65,7 @@ export const employeeService = {
         return []
       }
       
-      return data
+      return data as unknown as EmployeeWithBranch[]
     } catch (err) {
       console.error('Chi tiết lỗi Supabase (getEmployeesByBranch):', err)
       throw err
@@ -112,7 +94,7 @@ export const employeeService = {
       console.error('Error fetching employee:', error)
       throw error
     }
-    return data
+    return data as unknown as EmployeeWithBranch
   },
 
   // Create new employee

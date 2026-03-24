@@ -79,7 +79,7 @@ export default function NewsPage() {
 
       if (editingNews) {
         // Update
-        const updated = await newsService.updateNews(editingNews.newsid, {
+        const updated = await newsService.updateNews(String(editingNews.newsid), {
           title: form.title,
           content: form.content,
           type: form.type,
@@ -534,7 +534,7 @@ export default function NewsPage() {
                     Sửa
                   </button>
                   <button
-                    onClick={() => handleToggleStatus(item.newsid, item.status)}
+                    onClick={() => handleToggleStatus(String(item.newsid), item.status)}
                     style={{
                       flex: 1,
                       padding: '8px',
@@ -555,7 +555,7 @@ export default function NewsPage() {
                     {item.status === 'Hiện' ? 'Ẩn' : 'Hiện'}
                   </button>
                   <button
-                    onClick={() => handleDelete(item.newsid)}
+                    onClick={() => handleDelete(String(item.newsid))}
                     style={{
                       flex: 1,
                       padding: '8px',
