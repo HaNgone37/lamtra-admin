@@ -5,241 +5,237 @@ import type { Branch, EmployeeWithBranch, EmployeeFormData } from '@/types'
 export type { EmployeeWithBranch, EmployeeFormData }
 
 export const employeeService = {
-  // Fetch all employees with branch info
-  async getAllEmployees(): Promise<EmployeeWithBranch[]> {
+  // ============================================================
+  // GET ALL EMPLOYEES (with optional branch filter)
+  // ============================================================
+  async getAllEmployees(branchId?: number | null): Promise<EmployeeWithBranch[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('employees')
-        .select('employeeid, fullname, email, phone, position, status, branchid, created_at, branches(name)')
+        .select('employeeid, fullname, email, phone, position, status, branchid, created_at, branches(name), accounts(accountid, role, isactive)')
         .order('fullname', { ascending: true })
 
+      // Apply branch filter if provided
+      if (branchId) {
+        query = query.eq('branchid', branchId)
+        console.log('[DATA] Filter by branchid:', branchId)
+      }
+
+      const { data, error } = await query
+
       if (error) {
-        console.error('Chi tiết lỗi Supabase (getAllEmployees):', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        })
+        console.error('[ERROR] getAllEmployees:', error.message)
         throw new Error(`Lỗi tải nhân viên: ${error.message}`)
       }
-      
+
       if (!data) {
-        console.warn('Không có dữ liệu nhân viên được trả về')
+        console.warn('[WARN] Không có dữ liệu nhân viên')
         return []
       }
-      
+
+      console.log('[DATA] getAllEmployees returned:', data.length, 'employees')
       return data as unknown as EmployeeWithBranch[]
     } catch (err) {
-      console.error('Chi tiết lỗi Supabase (getAllEmployees):', err)
+      console.error('[ERROR] getAllEmployees:', err)
       throw err
     }
   },
 
-  // Fetch employees by branch
-  async getEmployeesByBranch(branchId: string): Promise<EmployeeWithBranch[]> {
-    try {
-      if (!branchId) {
-        console.warn('BranchId trống - không thể lọc theo chi nhánh')
-        return []
-      }
-      
-      const { data, error } = await supabase
-        .from('employees')
-        .select('employeeid, fullname, email, phone, position, status, branchid, created_at, branches(name)')
-        .eq('branchid', branchId)
-        .order('fullname', { ascending: true })
-
-      if (error) {
-        console.error('Chi tiết lỗi Supabase (getEmployeesByBranch):', {
-          branchId,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        })
-        throw new Error(`Lỗi tải nhân viên chi nhánh ${branchId}: ${error.message}`)
-      }
-      
-      if (!data) {
-        console.warn(`Không có nhân viên trong chi nhánh ${branchId}`)
-        return []
-      }
-      
-      return data as unknown as EmployeeWithBranch[]
-    } catch (err) {
-      console.error('Chi tiết lỗi Supabase (getEmployeesByBranch):', err)
-      throw err
-    }
-  },
-
-  // Get single employee
-  async getEmployeeById(employeeId: string): Promise<EmployeeWithBranch | null> {
-    const { data, error } = await supabase
-      .from('employees')
-      .select(`
-        employeeid,
-        fullname,
-        email,
-        phone,
-        position,
-        status,
-        branchid,
-        created_at,
-        branches(name)
-      `)
-      .eq('employeeid', employeeId)
-      .single()
-
-    if (error) {
-      console.error('Error fetching employee:', error)
-      throw error
-    }
-    return data as unknown as EmployeeWithBranch
-  },
-
-  // Create new employee
-  async createEmployee(employee: EmployeeFormData): Promise<EmployeeWithBranch> {
-    const { data, error } = await supabase
-      .from('employees')
-      .insert([{
-        fullname: employee.fullname,
-        email: employee.email,
-        phone: employee.phone,
-        position: employee.position,
-        branchid: employee.branchid,
-        status: employee.status || 'active'
-      }])
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating employee:', error)
-      throw error
-    }
-
-    // Fetch with branch info
-    return employeeService.getEmployeeById(data.employeeid) as Promise<EmployeeWithBranch>
-  },
-
-  // Update employee
-  async updateEmployee(employeeId: string, updates: Partial<EmployeeFormData>): Promise<EmployeeWithBranch> {
-    const { error } = await supabase
-      .from('employees')
-      .update(updates)
-      .eq('employeeid', employeeId)
-
-    if (error) {
-      console.error('Error updating employee:', error)
-      throw error
-    }
-
-    return employeeService.getEmployeeById(employeeId) as Promise<EmployeeWithBranch>
-  },
-
-  // Get branches (for dropdown)
+  // ============================================================
+  // GET BRANCHES
+  // ============================================================
   async getBranches(): Promise<Branch[]> {
     try {
       const { data, error } = await supabase
         .from('branches')
-        .select('*')
+        .select('branchid, name, address, longitude, latitude, isactive')
         .order('name', { ascending: true })
 
       if (error) {
-        console.error('Chi tiết lỗi Supabase (getBranches):', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        })
+        console.error('[ERROR] getBranches:', error.message)
         throw new Error(`Lỗi tải chi nhánh: ${error.message}`)
       }
-      
+
       if (!data) {
-        console.warn('Không có chi nhánh được trả về')
+        console.warn('[WARN] Không có chi nhánh')
         return []
       }
-      
+
+      console.log('[DATA] getBranches returned:', data.length, 'branches')
       return data
     } catch (err) {
-      console.error('Chi tiết lỗi Supabase (getBranches):', err)
+      console.error('[ERROR] getBranches:', err)
       throw err
     }
   },
 
-  // Check if employee has account
-  async checkEmployeeAccount(employeeId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('accounts')
-      .select('accountid')
-      .eq('employeeid', employeeId)
-      .single()
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error checking account:', error)
-      throw error
-    }
-    return !!data
-  },
-
-  // Get stats
-  async getEmployeeStats(branchId?: string) {
+  // ============================================================
+  // GET EMPLOYEE STATS
+  // ============================================================
+  async getEmployeeStats(branchId?: number | null) {
     try {
-      let query = supabase.from('employees').select('*', { count: 'exact', head: true })
+      let query = supabase.from('employees').select('*')
+
       if (branchId) {
         query = query.eq('branchid', branchId)
       }
-      const { count: totalEmployees, error: errTotal } = await query
 
-      if (errTotal) {
-        console.error('Chi tiết lỗi Supabase (getEmployeeStats - total):', {
-          branchId,
-          code: errTotal.code,
-          message: errTotal.message
-        })
+      const { data, error } = await query
+
+      if (error) {
+        console.error('[ERROR] getEmployeeStats:', error.message)
+        throw error
       }
 
-      // Get manager count
-      let managerQuery = supabase.from('employees').select('*', { count: 'exact', head: true }).eq('position', 'manager')
-      if (branchId) {
-        managerQuery = managerQuery.eq('branchid', branchId)
-      }
-      const { count: managers, error: errManagers } = await managerQuery
-
-      if (errManagers) {
-        console.error('Chi tiết lỗi Supabase (getEmployeeStats - managers):', {
-          branchId,
-          code: errManagers.code,
-          message: errManagers.message
-        })
+      if (!data) {
+        return { totalEmployees: 0, activeEmployees: 0, newThisMonth: 0 }
       }
 
-      // Get barista count
-      let baristaQuery = supabase.from('employees').select('*', { count: 'exact', head: true }).eq('position', 'barista')
-      if (branchId) {
-        baristaQuery = baristaQuery.eq('branchid', branchId)
-      }
-      const { count: baristas, error: errBaristas } = await baristaQuery
+      const totalEmployees = data.length
+      const activeEmployees = data.filter((emp: any) => emp.status === 'Đang làm').length
 
-      if (errBaristas) {
-        console.error('Chi tiết lỗi Supabase (getEmployeeStats - baristas):', {
-          branchId,
-          code: errBaristas.code,
-          message: errBaristas.message
-        })
-      }
+      // New employees this month
+      const now = new Date()
+      const currentMonth = now.getMonth()
+      const currentYear = now.getFullYear()
 
-      return {
-        totalEmployees: totalEmployees || 0,
-        managers: managers || 0,
-        baristas: baristas || 0
-      }
+      const newThisMonth = data.filter((emp: any) => {
+        if (!emp.created_at) return false
+        const empDate = new Date(emp.created_at)
+        return empDate.getMonth() === currentMonth && empDate.getFullYear() === currentYear
+      }).length
+
+      console.log('[DATA] getEmployeeStats:', { totalEmployees, activeEmployees, newThisMonth })
+      return { totalEmployees, activeEmployees, newThisMonth }
     } catch (err) {
-      console.error('Chi tiết lỗi Supabase (getEmployeeStats):', err)
-      return {
-        totalEmployees: 0,
-        managers: 0,
-        baristas: 0
-      }
+      console.error('[ERROR] getEmployeeStats:', err)
+      return { totalEmployees: 0, activeEmployees: 0, newThisMonth: 0 }
     }
-  }
+  },
+
+  // ============================================================
+  // GET SINGLE EMPLOYEE
+  // ============================================================
+  async getEmployeeById(employeeId: string | number): Promise<EmployeeWithBranch | null> {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('employeeid, fullname, email, phone, position, status, branchid, created_at, branches(name)')
+        .eq('employeeid', employeeId)
+        .single()
+
+      if (error) {
+        console.error('[ERROR] getEmployeeById:', error.message)
+        throw error
+      }
+
+      return data as unknown as EmployeeWithBranch
+    } catch (err) {
+      console.error('[ERROR] getEmployeeById:', err)
+      throw err
+    }
+  },
+
+  // ============================================================
+  // CREATE EMPLOYEE
+  // ============================================================
+  async createEmployee(employee: EmployeeFormData): Promise<EmployeeWithBranch> {
+    try {
+      const branchId = Number(employee.branchid)
+      if (isNaN(branchId)) {
+        throw new Error('Invalid branchid')
+      }
+
+      console.log('[START] Creating employee with branchid:', branchId)
+
+      const { data, error } = await supabase
+        .from('employees')
+        .insert([{
+          fullname: employee.fullname,
+          email: employee.email,
+          phone: employee.phone,
+          position: employee.position,
+          branchid: branchId,
+          status: employee.status || 'active'
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('[ERROR] Creating employee:', error.message)
+        throw error
+      }
+
+      console.log('[SUCCESS] Employee created:', data.employeeid)
+
+      const fetchedEmployee = await employeeService.getEmployeeById(data.employeeid)
+      if (!fetchedEmployee) throw new Error('Failed to fetch created employee')
+      return fetchedEmployee
+    } catch (err) {
+      console.error('[ERROR] createEmployee:', err)
+      throw err
+    }
+  },
+
+  // ============================================================
+  // UPDATE EMPLOYEE
+  // ============================================================
+  async updateEmployee(employeeId: string | number, updates: Partial<EmployeeFormData>): Promise<EmployeeWithBranch> {
+    try {
+      const updateData: any = { ...updates }
+
+      if (updates.branchid) {
+        const branchId = Number(updates.branchid)
+        if (isNaN(branchId)) {
+          throw new Error('Invalid branchid')
+        }
+        updateData.branchid = branchId
+      }
+
+      console.log('[START] Updating employee:', employeeId)
+
+      const { error } = await supabase
+        .from('employees')
+        .update(updateData)
+        .eq('employeeid', employeeId)
+
+      if (error) {
+        console.error('[ERROR] Updating employee:', error.message)
+        throw error
+      }
+
+      console.log('[SUCCESS] Employee updated:', employeeId)
+
+      const updatedEmployee = await employeeService.getEmployeeById(employeeId)
+      if (!updatedEmployee) throw new Error('Failed to fetch updated employee')
+      return updatedEmployee
+    } catch (err) {
+      console.error('[ERROR] updateEmployee:', err)
+      throw err
+    }
+  },
+
+  // ============================================================
+  // DELETE EMPLOYEE
+  // ============================================================
+  async deleteEmployee(employeeId: string | number): Promise<void> {
+    try {
+      console.log('[START] Deleting employee:', employeeId)
+
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('employeeid', employeeId)
+
+      if (error) {
+        console.error('[ERROR] Deleting employee:', error.message)
+        throw error
+      }
+
+      console.log('[SUCCESS] Employee deleted:', employeeId)
+    } catch (err) {
+      console.error('[ERROR] deleteEmployee:', err)
+      throw err
+    }
+  },
 }

@@ -14,7 +14,7 @@
 ### Phân hệ 1: Danh mục & Sản phẩm (Core Catalog)
 1.  **`branches` (Chi nhánh):** `branchid` (int8, PK), `name`, `address`, `longitude`, `latitude`, `isactive` (bool).
 2.  **`categories` (Danh mục):** `categoryid` (int8, PK), `name`, `description`.
-3.  **`products` (Sản phẩm):** `productid` (int8, PK), `name`, `subtitle`, `description`, `baseprice`, `imageurl`, `status`, `categoryid` (FK).
+3.  **`products` (Sản phẩm):** `productid` (int8, PK), `name`, `subtitle`, `description`, `baseprice`, `imageurl`, `status`, `saleprice` (int8), `categoryid` (FK).
 4.  **`sizes` (Kích thước):** `sizeid` (int8, PK), `name` (M/L), `additionalprice`.
 5.  **`toppings` (Đồ thêm):** `toppingid` (int8, PK), `name`, `price`, `imageurl`, `isavailable` (bool).
 6.  **`branchproductstatus` (Menu tại quán):** `branchid` (int8, FK), `productid` (int8, FK), `status` ('Còn món'/'Hết món').
@@ -53,7 +53,7 @@
 24. **`media` (Hình ảnh/Video):** `mediaid` (int8, PK), `path` (URL), `filetype`(varchar): 'image' hoặc 'video', `newsid` (FK, Nullable), `reviewid` (FK, Nullable).
 25. **`reviews` (Đánh giá):** `reviewid` (int8, PK), `rating`, `comment`, `createdat`, `customerid` (FK), `orderid` (FK), `productid` (FK), `sentiment` (varchar): Kết quả AI phân tích ('Tích cực', 'Tiêu cực', 'Trung lập').
 26. **`_migrations`:** Bảng hệ thống quản lý lịch sử database.
-s
+
 ---
 
 ## 3. SƠ ĐỒ LIÊN KẾT & QUAN HỆ (RELATIONSHIPS)
@@ -90,3 +90,10 @@ s
 3.  **Loyalty:** Đơn hàng 'Xong' → Tính điểm → Cộng `totalpoints` cho `customers` → Tự động cập nhật `membership` (Trigger).
 4.  **CRM:** Admin tặng mã (insert `customervouchers`) hoặc Khách đổi điểm (trừ `totalpoints` + insert `customervouchers`).
 ```
+
+#### Quy tắc Quản lý Tài khoản (Auth Admin Logic):
+- **Cơ chế:** Sử dụng Supabase Edge Function (`manage-users`) làm cầu nối bảo mật.
+- **Tính năng:**
+    1. Tạo User: Nhận Email/Pass -> Gọi `auth.admin.createUser()` -> Lấy UUID -> Insert bảng `accounts`.
+    2. Reset Pass: Nhận UUID/Pass mới -> Gọi `auth.admin.updateUserById()`.
+    3. Trạng thái: Gọi `auth.admin.updateUserById({ ban: true/false })` để khóa/mở tài khoản.

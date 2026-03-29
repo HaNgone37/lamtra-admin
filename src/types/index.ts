@@ -219,8 +219,16 @@ export interface Employee {
   name?: string // alias cho fullname
 }
 
+export interface Account {
+  accountid: string | number
+  employeeid: string | number
+  isactive: boolean
+  isBanned?: boolean
+}
+
 export interface EmployeeWithBranch extends Employee {
   branches?: Branch | { name: string }
+  accounts?: Account[]
 }
 
 export interface EmployeeFormData {

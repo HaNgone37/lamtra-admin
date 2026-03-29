@@ -1,394 +1,320 @@
 import React, { useState, useEffect } from 'react'
-import { Card } from '@/components/Card'
-import { EmployeeFormData } from '@/services/employeeService'
-import { Branch } from '@/types'
-import { Plus, Edit2, UserPlus, X, Search, ChevronDown, Loader, AlertCircle } from 'lucide-react'
-import { supabase } from '@/utils/supabaseClient'
-import Toast from '@/components/Toast'
-import { validateEmployeeForm, normalizeEmployeeData, EmployeeValidationErrors } from '@/utils/validationUtils'
+import { supabase } from '../utils/supabaseClient'
+import Toast from '../components/Toast'
+import { authAdminService } from '../services/authAdminService'
+import { employeeService } from '../services/employeeService'
+import EmployeeStats from '../components/employees/EmployeeStats'
+import EmployeeTable from '../components/employees/EmployeeTable'
+import EmployeeModals from '../components/employees/EmployeeModals'
+import type { EmployeeWithBranch, Branch } from '../types'
 
-interface EmployeeWithBranch {
-  employeeid: string
-  fullname: string
-  email: string
-  phone: string
-  position: string
-  status: string
-  branchid: string
-  created_at?: string
-  branches?: any
+interface StatsData {
+  totalEmployees: number
+  activeEmployees: number
+  newThisMonth: number
 }
 
-const StatusBadge = ({ status }: { status: string }) => {
-  const isActive = status === 'Đang làm' || status === 'active'
-  const bgColor = isActive ? '#E6FFFA' : '#F0F0F0'
-  const textColor = isActive ? '#047857' : '#5A5A5A'
-  const dotColor = isActive ? '#047857' : '#5A5A5A'
-  const label = status === 'Đang làm' ? 'Đang làm' : status === 'active' ? 'Đang làm' : 'Nghỉ việc'
-
-  return (
-    <span
-      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold"
-      style={{ backgroundColor: bgColor, color: textColor }}
-    >
-      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: dotColor }} />
-      {label}
-    </span>
-  )
+interface ToastMessage {
+  message: string
+  type: 'success' | 'error'
 }
 
-const AvatarCircle = ({ name }: { name: string }) => {
-  const initials = name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
-
-  return (
-    <div
-      className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm"
-      style={{ backgroundColor: '#4318FF' }}
-    >
-      {initials}
-    </div>
-  )
-}
-
-const StatCard = ({ title, value, subtext }: { title: string; value: number; subtext: string }) => (
-  <Card>
-    <div>
-      <p className="text-sm mb-2" style={{ color: '#8F9CB8' }}>{title}</p>
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-3xl font-bold" style={{ color: '#2B3674' }}>{value}</p>
-          <p className="text-xs mt-1" style={{ color: '#8F9CB8' }}>{subtext}</p>
-        </div>
-        <div className="text-4xl" style={{ color: '#4318FF', opacity: 0.1 }}>→</div>
-      </div>
-    </div>
-  </Card>
-)
-
-export const Employees: React.FC = () => {
+const Employees: React.FC = () => {
+  // State: Tabs & Data
+  const [activeTab, setActiveTab] = useState<'profiles' | 'system'>('profiles')
   const [employees, setEmployees] = useState<EmployeeWithBranch[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedBranchId, setSelectedBranchId] = useState<string>('all')
-  const [stats, setStats] = useState({ totalEmployees: 0, totalBranches: 0, newEmployeesThisMonth: 0 })
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [stats, setStats] = useState<StatsData>({
+    totalEmployees: 0,
+    activeEmployees: 0,
+    newThisMonth: 0,
+  })
 
-  // Modal states
+  // State: UI
+  const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [userBranchId, setUserBranchId] = useState<number | null>(null)
+  const [userBranchName, setUserBranchName] = useState<string>('')
+  const [toast, setToast] = useState<ToastMessage | null>(null)
+  const [selectedBranch, setSelectedBranch] = useState<number | null>(null)
+
+  // State: Modal flags
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [showAccountModal, setShowAccountModal] = useState(false)
+  const [showGrantModal, setShowGrantModal] = useState(false)
+  const [showManageModal, setShowManageModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeWithBranch | null>(null)
-  const [modalLoading, setModalLoading] = useState(false)
-  const [formData, setFormData] = useState<EmployeeFormData>({
-    fullname: '',
-    email: '',
-    phone: '',
-    position: 'Pha chế',
-    branchid: '',
-    status: 'Đang làm'
-  })
-  const [formErrors, setFormErrors] = useState<EmployeeValidationErrors>({})
 
-  // Get role and branchId from localStorage (set during login)
-  const userRole = localStorage.getItem('userRole') || 'staff'
-  const userBranchId = localStorage.getItem('userBranchId') || ''
-  const isSuperAdmin = userRole?.toLowerCase().trim() === 'super admin' || userRole?.toLowerCase() === 'super_admin'
+  // State: Loading states
+  const [addLoading, setAddLoading] = useState(false)
+  const [editLoading, setEditLoading] = useState(false)
+  const [grantLoading, setGrantLoading] = useState(false)
+  const [manageLoading, setManageLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // STEP 1: Load branches only once on component mount
+  const isSuperAdmin = userRole?.toLowerCase() === 'super admin'
+
+  // Effects - Initialize user role and branch
+  useEffect(() => {
+    const role = localStorage.getItem('userRole')
+    const branchIdStr = localStorage.getItem('userBranchId')
+    const branchId = branchIdStr ? parseInt(branchIdStr, 10) : null
+    
+    setUserRole(role)
+    setUserBranchId(branchId)
+    
+    // Auto-set selectedBranch immediately for Branch Manager
+    const isSA = role?.toLowerCase() === 'super admin'
+    if (!isSA && branchId) {
+      setSelectedBranch(branchId)
+      console.log('[RBAC] Branch Manager detected - setting selectedBranch to:', branchId)
+    } else if (isSA) {
+      setSelectedBranch(null)
+      console.log('[RBAC] Super Admin detected - showing all branches')
+    }
+    
+    console.log('[RBAC] Initialized - User Role:', role, 'Branch ID:', branchId, 'Is Super Admin:', isSA)
+  }, [])
+
   useEffect(() => {
     const loadBranches = async () => {
       try {
-        const { data: branchesData, error: branchesError } = await supabase
-          .from('branches')
-          .select('*')
-          .order('name', { ascending: true })
+        const data = await employeeService.getBranches()
+        setBranches(data)
         
-        if (branchesError) {
-          console.error('❌ [BRANCHES]:', branchesError)
-        } else {
-          setBranches(branchesData || [])
-          console.log(`✅ [BRANCHES] ${branchesData?.length} chi nhánh`)
+        // Set branch name for Branch Manager
+        if (userBranchId && !isSuperAdmin) {
+          const branch = data.find(b => b.branchid === userBranchId)
+          if (branch) {
+            setUserBranchName(branch.name)
+            console.log('[RBAC] Found branch name:', branch.name)
+          }
         }
       } catch (err) {
-        console.error('❌ [BRANCHES ERROR]:', err)
+        console.error('[ERROR] Loading branches:', err)
       }
     }
     
-    loadBranches()
-  }, [])
-
-  // STEP 2: Fetch employees whenever selectedBranchId changes
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true)
-        console.log('=== 🚀 BẮT ĐẦU LỌC DỮ LIỆU ===')
-        console.log('👤 User Role:', userRole)
-        console.log('✅ isSuperAdmin:', isSuperAdmin)
-        console.log('🔍 selectedBranchId:', selectedBranchId)
-
-        let query = supabase
-          .from('employees')
-          .select('*, branches(name)')
-          .order('fullname', { ascending: true })
-
-        // Apply filtering logic based on role and selectedBranchId
-        if (isSuperAdmin) {
-          // Super Admin: Apply branch filter if selectedBranchId !== 'all'
-          if (selectedBranchId !== 'all') {
-            console.log(`🏢 [SUPER ADMIN] Lọc theo chi nhánh: ${selectedBranchId}`)
-            query = query.eq('branchid', parseInt(selectedBranchId))
-          } else {
-            console.log('🔑 [SUPER ADMIN] Lấy TẤT CẢ (không lọc)')
-          }
-        } else {
-          // Branch Manager: Always filter by their own branchid
-          if (!userBranchId) {
-            console.warn('⚠️ Branch ID trống!')
-            setEmployees([])
-            setStats({ totalEmployees: 0, totalBranches: branches.length, newEmployeesThisMonth: 0 })
-            setLoading(false)
-            return
-          }
-          console.log(`👤 [BRANCH MANAGER] Bị ép cứng lọc branchid: ${userBranchId}`)
-          query = query.eq('branchid', userBranchId)
-        }
-
-        const { data, error } = await query
-        if (error) {
-          console.error('❌ [QUERY ERROR]:', error)
-          setEmployees([])
-        } else {
-          console.log('📦 Dữ liệu nhân viên thô từ DB:', data)
-          const empData = data || []
-          console.log(`✅ [EMPLOYEES] ${empData.length} nhân viên`)
-          empData.forEach((e, idx) => {
-            const branchName = Array.isArray(e.branches) ? e.branches[0]?.name : e.branches?.name
-            console.log(`  [${idx+1}] ${e.fullname} | ${e.position} | ${branchName}`)
-          })
-          setEmployees(empData)
-
-          // Calculate stats
-          const totalEmployees = empData.length
-          const totalBranches = branches.length
-          const now = new Date()
-          // Get first day of current month (00:00:00)
-          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-          const newEmployeesThisMonth = empData.filter(emp => {
-            if (!emp.created_at) return false
-            const createdDate = new Date(emp.created_at)
-            // Compare: from first day of month to today (inclusive)
-            return createdDate >= firstDayOfMonth && createdDate <= now
-          }).length
-
-          console.log('📈 Stats:', { totalEmployees, totalBranches, newEmployeesThisMonth })
-          setStats({ totalEmployees, totalBranches, newEmployeesThisMonth })
-        }
-      } catch (error) {
-        console.error('❌ [FATAL ERROR]:', error)
-        setEmployees([])
-      } finally {
-        setLoading(false)
-      }
+    if (userBranchId !== null || isSuperAdmin) {
+      loadBranches()
     }
+  }, [userBranchId, isSuperAdmin])
 
-    fetchEmployees()
-  }, [selectedBranchId, isSuperAdmin, userBranchId, branches.length])
+  // Trigger data load when selectedBranch changes
+  useEffect(() => {
+    console.log('[RBAC] selectedBranch changed to:', selectedBranch)
+    loadEmployeesAndStats()
+  }, [selectedBranch])
 
-  // Helper function to refresh employees list
-  const refreshEmployees = async () => {
+  // Functions
+  const loadEmployeesAndStats = async () => {
     try {
       setLoading(true)
-      let query = supabase
-        .from('employees')
-        .select('*, branches(name)')
-        .order('fullname', { ascending: true })
-
-      if (isSuperAdmin) {
-        if (selectedBranchId !== 'all') {
-          query = query.eq('branchid', parseInt(selectedBranchId))
-        }
-      } else {
-        if (userBranchId) {
-          query = query.eq('branchid', userBranchId)
-        }
-      }
-
-      const { data, error } = await query
-      if (error) {
-        console.error('❌ Refresh error:', error)
-        setToast({ message: 'Lỗi tải lại dữ liệu', type: 'error' })
-      } else {
-        const empData = data || []
-        setEmployees(empData)
-
-        // Recalculate stats
-        const totalEmployees = empData.length
-        const totalBranches = branches.length
-        const now = new Date()
-        // Get first day of current month (00:00:00)
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-        const newEmployeesThisMonth = empData.filter(emp => {
-          if (!emp.created_at) return false
-          const createdDate = new Date(emp.created_at)
-          // Compare: from first day of month to today (inclusive)
-          return createdDate >= firstDayOfMonth && createdDate <= now
-        }).length
-
-        setStats({ totalEmployees, totalBranches, newEmployeesThisMonth })
-      }
-    } catch (error) {
-      console.error('❌ Refresh error:', error)
-      setToast({ message: 'Lỗi tải lại dữ liệu', type: 'error' })
+      const employeeData = await employeeService.getAllEmployees(selectedBranch)
+      setEmployees(employeeData)
+      const statsData = await employeeService.getEmployeeStats(selectedBranch)
+      setStats(statsData)
+    } catch (err) {
+      console.error('[ERROR] Loading data:', err)
+      setToast({ message: 'Không thể tải dữ liệu', type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleOpenAddModal = () => {
-    setFormData({
-      fullname: '',
-      email: '',
-      phone: '',
-      position: 'Pha chế',
-      branchid: isSuperAdmin ? '' : userBranchId,
-      status: 'Đang làm'
-    })
-    setFormErrors({})
-    setShowAddModal(true)
-  }
-
-  const handleOpenEditModal = (employee: EmployeeWithBranch) => {
-    setSelectedEmployee(employee)
-    setFormData({
-      fullname: employee.fullname,
-      email: employee.email,
-      phone: employee.phone,
-      position: employee.position,
-      branchid: employee.branchid,
-      status: employee.status
-    })
-    setFormErrors({})
-    setShowEditModal(true)
-  }
-
-  const handleAddEmployee = async () => {
-    // Validate form - chỉ validate fullname, email, phone
-    const errors = validateEmployeeForm(formData)
-    setFormErrors(errors)
-
-    if (Object.keys(errors).length > 0) {
-      const firstError = Object.values(errors)[0]
-      setToast({ message: firstError || 'Vui lòng kiểm tra lại thông tin', type: 'error' })
-      return
-    }
-
-    setModalLoading(true)
+  const handleAddEmployee = async (formData: any) => {
     try {
-      // Normalize data before sending
-      const normalizedData = normalizeEmployeeData(formData)
-
-      const { error } = await supabase.from('employees').insert([{
-        fullname: normalizedData.fullname,
-        email: normalizedData.email,
-        phone: normalizedData.phone,
-        position: normalizedData.position,
-        branchid: normalizedData.branchid,
-        status: normalizedData.status || 'Đang làm'
-      }])
-      if (error) throw error
-      
-      setToast({ message: `✅ Thêm nhân viên ${normalizedData.fullname} thành công!`, type: 'success' })
+      setAddLoading(true)
+      await employeeService.createEmployee(formData)
+      setToast({ message: 'Thêm nhân viên thành công', type: 'success' })
       setShowAddModal(false)
-      setFormErrors({})
-      
-      // Refresh employees list
-      await refreshEmployees()
-    } catch (error) {
-      console.error('Error:', error)
-      setToast({ message: 'Lỗi thêm nhân viên: ' + (error as any).message, type: 'error' })
+      await loadEmployeesAndStats()
+    } catch (err) {
+      console.error('[ERROR]', err)
+      setToast({ message: 'Không thể thêm nhân viên', type: 'error' })
     } finally {
-      setModalLoading(false)
+      setAddLoading(false)
     }
   }
 
-  const handleUpdateEmployee = async () => {
+  const handleEditEmployee = async (formData: any) => {
     if (!selectedEmployee) return
+    try {
+      setEditLoading(true)
+      await employeeService.updateEmployee(selectedEmployee.employeeid, formData)
+      setToast({ message: 'Cập nhật thành công', type: 'success' })
+      setShowEditModal(false)
+      setSelectedEmployee(null)
+      await loadEmployeesAndStats()
+    } catch (err) {
+      console.error('[ERROR]', err)
+      setToast({ message: 'Không thể cập nhật', type: 'error' })
+    } finally {
+      setEditLoading(false)
+    }
+  }
 
-    // Validate form - chỉ validate fullname, email, phone
-    const errors = validateEmployeeForm(formData)
-    setFormErrors(errors)
-
-    if (Object.keys(errors).length > 0) {
-      const firstError = Object.values(errors)[0]
-      setToast({ message: firstError || 'Vui lòng kiểm tra lại thông tin', type: 'error' })
+  const handleGrantAccount = async (password: string, role: string) => {
+    if (!selectedEmployee || !password) {
+      setToast({ message: 'Vui lòng nhập mật khẩu', type: 'error' })
       return
     }
-    
-    setModalLoading(true)
     try {
-      // Normalize data before sending
-      const normalizedData = normalizeEmployeeData(formData)
-
-      const { error } = await supabase
-        .from('employees')
-        .update({
-          fullname: normalizedData.fullname,
-          email: normalizedData.email,
-          phone: normalizedData.phone,
-          position: normalizedData.position,
-          status: normalizedData.status
-        })
-        .eq('employeeid', selectedEmployee.employeeid)
-      if (error) throw error
-      
-      setToast({ message: `✅ Cập nhật thông tin ${normalizedData.fullname} thành công!`, type: 'success' })
-      setShowEditModal(false)
-      setFormErrors({})
-      
-      // Refresh employees list
-      await refreshEmployees()
-    } catch (error) {
-      console.error('Error:', error)
-      setToast({ message: 'Lỗi cập nhật nhân viên: ' + (error as any).message, type: 'error' })
+      setGrantLoading(true)
+      // Map role names to auth service format
+      const roleMap: { [key: string]: 'Staff' | 'Branch Manager' | 'Super Admin' } = {
+        'staff': 'Staff',
+        'manager': 'Branch Manager',
+        'super_admin': 'Super Admin',
+      }
+      await authAdminService.createEmployeeAccount({
+        email: selectedEmployee.email,
+        password,
+        employeeId: selectedEmployee.employeeid,
+        branchId: selectedEmployee.branchid,
+        role: roleMap[role] || 'Staff',
+      })
+      setToast({ message: 'Cấp tài khoản thành công', type: 'success' })
+      setShowGrantModal(false)
+      setSelectedEmployee(null)
+      await loadEmployeesAndStats()
+    } catch (err: any) {
+      setToast({ message: err.message || 'Không thể cấp tài khoản', type: 'error' })
     } finally {
-      setModalLoading(false)
+      setGrantLoading(false)
     }
   }
 
-  const handleGrantAccount = (employee: EmployeeWithBranch) => {
-    setSelectedEmployee(employee)
-    setShowAccountModal(true)
+  const handleResetPassword = async (password: string) => {
+    if (!selectedEmployee || !password) {
+      setToast({ message: 'Vui lòng nhập mật khẩu mới', type: 'error' })
+      return
+    }
+    try {
+      setManageLoading(true)
+      const { data: account } = await supabase
+        .from('accounts')
+        .select('accountid')
+        .eq('employeeid', selectedEmployee.employeeid)
+        .single()
+      if (!account?.accountid) throw new Error('Không tìm thấy tài khoản')
+      await authAdminService.resetPassword({ userId: account.accountid, newPassword: password })
+      setToast({ message: 'Đặt lại mật khẩu thành công', type: 'success' })
+      setShowManageModal(false)
+      setSelectedEmployee(null)
+      await loadEmployeesAndStats()
+    } catch (err: any) {
+      setToast({ message: err.message || 'Không thể đặt lại mật khẩu', type: 'error' })
+    } finally {
+      setManageLoading(false)
+    }
   }
 
-  const filteredEmployees = employees.filter(emp => {
-    // Filter by search term only (branch filtering is done at database level in fetchEmployees)
-    const matchSearch =
-      emp.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    return matchSearch
-  })
-
-  // Helper function to get branch name from Supabase data
-  const getBranchName = (emp: EmployeeWithBranch): string => {
-    if (!emp.branches) {
-      return 'N/A'
+  const handleToggleLock = async (shouldLock: boolean) => {
+    if (!selectedEmployee) return
+    try {
+      setManageLoading(true)
+      const { data: account } = await supabase
+        .from('accounts')
+        .select('accountid')
+        .eq('employeeid', selectedEmployee.employeeid)
+        .single()
+      if (!account?.accountid) throw new Error('Không tìm thấy tài khoản')
+      await authAdminService.updateAccountStatus({ userId: account.accountid, isBanned: shouldLock })
+      setToast({
+        message: shouldLock ? 'Khóa tài khoản thành công' : 'Mở khóa tài khoản thành công',
+        type: 'success',
+      })
+      setShowManageModal(false)
+      setSelectedEmployee(null)
+      await loadEmployeesAndStats()
+    } catch (err: any) {
+      setToast({ message: err.message || 'Không thể thay đổi', type: 'error' })
+    } finally {
+      setManageLoading(false)
     }
-    // Handle case where branches might be an object or array
-    const branchObj = Array.isArray(emp.branches) ? emp.branches[0] : emp.branches
-    return branchObj?.name || 'N/A'
+  }
+
+  const handleDeleteEmployee = async () => {
+    if (!selectedEmployee) return
+    try {
+      setDeleteLoading(true)
+      await employeeService.deleteEmployee(selectedEmployee.employeeid)
+      setToast({ message: 'Xóa nhân viên thành công', type: 'success' })
+      setShowDeleteConfirm(false)
+      setSelectedEmployee(null)
+      await loadEmployeesAndStats()
+    } catch (err: any) {
+      setToast({ message: err.message || 'Không thể xóa nhân viên', type: 'error' })
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Toast Notification */}
+    <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Quản Lý Nhân Viên</h1>
+        <p className="text-gray-600">Quản lý thông tin và tài khoản đăng nhập của nhân viên</p>
+      </div>
+
+      <EmployeeStats stats={stats} />
+
+      <div className="mb-6 flex gap-2 border-b border-gray-200 mt-8">
+        <button
+          onClick={() => setActiveTab('profiles')}
+          className={`px-6 py-3 font-semibold transition-all border-b-2 ${
+            activeTab === 'profiles'
+              ? 'text-blue-600 border-blue-600'
+              : 'text-gray-600 border-transparent hover:text-gray-900'
+          }`}
+        >
+          Hồ Sơ Nhân Viên
+        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => setActiveTab('system')}
+            className={`px-6 py-3 font-semibold transition-all border-b-2 ${
+              activeTab === 'system'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-600 border-transparent hover:text-gray-900'
+            }`}
+          >
+            Quản Trị Hệ Thống
+          </button>
+        )}
+      </div>
+
+      {!loading && (
+        <EmployeeTable
+          employees={employees}
+          branches={branches}
+          activeTab={activeTab}
+          isSuperAdmin={isSuperAdmin}
+          userBranchName={userBranchName}
+          loading={loading}
+          onAddClick={() => setShowAddModal(true)}
+          onEditClick={(emp) => {
+            setSelectedEmployee(emp)
+            setShowEditModal(true)
+          }}
+          onGrantClick={(emp) => {
+            setSelectedEmployee(emp)
+            setShowGrantModal(true)
+          }}
+          onManageClick={(emp) => {
+            setSelectedEmployee(emp)
+            setShowManageModal(true)
+          }}
+          onDeleteClick={(emp) => {
+            setSelectedEmployee(emp)
+            setShowDeleteConfirm(true)
+          }}
+          onBranchChange={setSelectedBranch}
+        />
+      )}
+
       {toast && (
         <Toast
           message={toast.message}
@@ -397,544 +323,71 @@ export const Employees: React.FC = () => {
         />
       )}
 
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#2B3674' }}>Quản lý nhân sự</h1>
-          <p style={{ color: '#8F9CB8' }}>
-            {isSuperAdmin ? 'Toàn bộ nhân sự' : 'Nhân sự chi nhánh'}
-          </p>
-        </div>
-        <button
-          onClick={handleOpenAddModal}
-          className="px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-all"
-          style={{
-            backgroundColor: '#4318FF',
-            color: '#FFFFFF',
-            boxShadow: 'rgba(67, 24, 255, 0.3) 0px 8px 16px'
-          }}
-        >
-          <Plus size={20} />
-          Thêm nhân viên
-        </button>
-      </div>
+      <EmployeeModals
+        showAddModal={showAddModal}
+        onAddClose={() => setShowAddModal(false)}
+        onAddSubmit={handleAddEmployee}
+        addLoading={addLoading}
+        showEditModal={showEditModal}
+        selectedEmployee={selectedEmployee}
+        onEditClose={() => {
+          setShowEditModal(false)
+          setSelectedEmployee(null)
+        }}
+        onEditSubmit={handleEditEmployee}
+        editLoading={editLoading}
+        showGrantModal={showGrantModal}
+        onGrantClose={() => {
+          setShowGrantModal(false)
+          setSelectedEmployee(null)
+        }}
+        onGrantSubmit={handleGrantAccount}
+        grantLoading={grantLoading}
+        showManageModal={showManageModal}
+        onManageClose={() => {
+          setShowManageModal(false)
+          setSelectedEmployee(null)
+        }}
+        onResetPassword={handleResetPassword}
+        onToggleLock={handleToggleLock}
+        manageLoading={manageLoading}
+        branches={branches}
+        isSuperAdmin={isSuperAdmin}
+        userBranchId={userBranchId}
+      />
 
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Tổng nhân sự" value={stats.totalEmployees} subtext="toàn hệ thống" />
-        <StatCard title="Chi nhánh" value={stats.totalBranches} subtext="điểm kinh doanh" />
-        <StatCard title="Nhân sự mới" value={stats.newEmployeesThisMonth} subtext="tháng này" />
-      </div>
-
-      {/* Search & Filter */}
-      <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <Search size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2" style={{ color: '#8F9CB8' }} />
-            <input
-              type="text"
-              placeholder="Tìm theo tên hoặc email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-lg text-sm"
-              style={{
-                backgroundColor: '#F4F7FE',
-                color: '#2B3674',
-                border: '1px solid #E0E5F2'
-              }}
-            />
-          </div>
-
-          {isSuperAdmin && (
-            <div className="relative">
-              <select
-                value={selectedBranchId}
-                onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg text-sm appearance-none pr-10"
-                style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
-              >
-                <option value="all">Tất cả chi nhánh</option>
-                {branches.map(branch => (
-                  <option key={branch.branchid} value={branch.branchid}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none" style={{ color: '#2B3674' }} />
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* Employees Table */}
-      <Card>
-        {loading ? (
-          <div className="text-center py-12" style={{ color: '#8F9CB8' }}>
-            Đang tải dữ liệu...
-          </div>
-        ) : filteredEmployees.length === 0 ? (
-          <div className="text-center py-12" style={{ color: '#8F9CB8' }}>
-            Không tìm thấy nhân viên
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr style={{ borderBottom: '2px solid #E0E5F2', backgroundColor: '#F4F7FE' }}>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Nhân viên</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Vị trí</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Chi nhánh</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Trạng thái</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEmployees.map(employee => (
-                  <tr
-                    key={employee.employeeid}
-                    style={{ borderBottom: '1px solid #E0E5F2' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F4F7FE'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <AvatarCircle name={employee.fullname} />
-                        <div>
-                          <p className="font-bold text-sm" style={{ color: '#2B3674' }}>
-                            {employee.fullname}
-                          </p>
-                          <p className="text-xs" style={{ color: '#8F9CB8' }}>
-                            {employee.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span
-                        className="inline-block px-3 py-1 rounded-lg text-xs font-semibold"
-                        style={{
-                          backgroundColor: '#EBF3FF',
-                          color: '#4318FF'
-                        }}
-                      >
-                        {employee.position}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6" style={{ color: '#8F9CB8' }}>
-                      {getBranchName(employee)}
-                    </td>
-                    <td className="py-4 px-6">
-                      <StatusBadge status={employee.status} />
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleOpenEditModal(employee)}
-                          className="p-2 rounded-lg transition-colors"
-                          style={{ backgroundColor: '#EBF3FF', color: '#4318FF' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D1E0FF'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EBF3FF'}
-                          title="Sửa"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleGrantAccount(employee)}
-                          className="p-2 rounded-lg transition-colors"
-                          style={{ backgroundColor: '#FFF7E6', color: '#FF9900' }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFE8CC'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFF7E6'}
-                          title="Cấp tài khoản"
-                        >
-                          <UserPlus size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      {/* Add Employee Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Thêm nhân viên mới</h2>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-2 rounded-lg"
-                style={{ backgroundColor: '#F4F7FE', color: '#2B3674' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Tên nhân viên</label>
-                <input
-                  type="text"
-                  value={formData.fullname}
-                  onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: formErrors.fullname ? '2px solid #EF4444' : '1px solid #E0E5F2'
-                  }}
-                />
-                {formErrors.fullname && (
-                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
-                    <AlertCircle size={14} />
-                    <span className="text-xs">{formErrors.fullname}</span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: formErrors.email ? '2px solid #EF4444' : '1px solid #E0E5F2'
-                  }}
-                />
-                {formErrors.email && (
-                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
-                    <AlertCircle size={14} />
-                    <span className="text-xs">{formErrors.email}</span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Số điện thoại</label>
-                <input
-                  type="tel"
-                  placeholder="Nhập số điện thoại (chỉ nhập được số)"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: formErrors.phone ? '2px solid #EF4444' : '1px solid #E0E5F2'
-                  }}
-                />
-                {formErrors.phone && (
-                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
-                    <AlertCircle size={14} />
-                    <span className="text-xs">{formErrors.phone}</span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Vị trí</label>
-                <select
-                  value={formData.position}
-                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: '1px solid #E0E5F2'
-                  }}
-                >
-                  <option value="Pha chế">Pha chế</option>
-                  <option value="Phục vụ">Phục vụ</option>
-                  <option value="Quản lý">Quản lý</option>
-                  <option value="Bảo vệ">Bảo vệ</option>
-                  <option value="Giao hàng">Giao hàng</option>
-                  <option value="Kế toán">Kế toán</option>
-                </select>
-              </div>
-              {isSuperAdmin && (
-                <div>
-                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Chi nhánh</label>
-                  <select
-                    value={formData.branchid}
-                    onChange={(e) => setFormData({ ...formData, branchid: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg"
-                    style={{ 
-                      backgroundColor: '#F4F7FE', 
-                      color: '#2B3674', 
-                      border: '1px solid #E0E5F2'
-                    }}
-                  >
-                    <option value="">Chọn chi nhánh</option>
-                    {branches.map(branch => (
-                      <option key={branch.branchid} value={branch.branchid}>{branch.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+      {/* DELETE CONFIRMATION MODAL */}
+      {showDeleteConfirm && selectedEmployee && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md shadow-2xl">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Xác nhận xóa</h2>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn xóa nhân viên <span className="font-semibold text-gray-900">{selectedEmployee.fullname}</span> khỏi danh sách? Hành động này không thể hoàn tác.
+            </p>
             <div className="flex gap-3">
               <button
-                onClick={handleAddEmployee}
-                disabled={modalLoading}
-                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
-                style={{ 
-                  backgroundColor: modalLoading ? '#A3AED0' : '#4318FF', 
-                  color: '#FFFFFF',
-                  cursor: modalLoading ? 'not-allowed' : 'pointer',
-                  opacity: modalLoading ? 0.7 : 1
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setSelectedEmployee(null)
                 }}
-              >
-                {modalLoading ? (
-                  <>
-                    <Loader size={16} style={{ animation: 'spin 0.8s linear infinite' }} />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  'Thêm nhân viên'
-                )}
-              </button>
-              <button
-                onClick={() => setShowAddModal(false)}
-                disabled={modalLoading}
-                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all"
-                style={{ 
-                  backgroundColor: '#E0E5F2', 
-                  color: '#2B3674',
-                  opacity: modalLoading ? 0.5 : 1,
-                  cursor: modalLoading ? 'not-allowed' : 'pointer'
-                }}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium disabled:bg-gray-100"
               >
                 Hủy
               </button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Edit Employee Modal */}
-      {showEditModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Sửa thông tin nhân viên</h2>
               <button
-                onClick={() => setShowEditModal(false)}
-                className="p-2 rounded-lg"
-                style={{ backgroundColor: '#F4F7FE', color: '#2B3674' }}
+                onClick={handleDeleteEmployee}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors font-medium"
               >
-                <X size={20} />
+                {deleteLoading ? 'Đang xử lý...' : 'Xóa'}
               </button>
             </div>
-
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Tên nhân viên</label>
-                <input
-                  type="text"
-                  value={formData.fullname}
-                  onChange={(e) => setFormData({ ...formData, fullname: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: formErrors.fullname ? '2px solid #EF4444' : '1px solid #E0E5F2'
-                  }}
-                />
-                {formErrors.fullname && (
-                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
-                    <AlertCircle size={14} />
-                    <span className="text-xs">{formErrors.fullname}</span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: formErrors.email ? '2px solid #EF4444' : '1px solid #E0E5F2'
-                  }}
-                />
-                {formErrors.email && (
-                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
-                    <AlertCircle size={14} />
-                    <span className="text-xs">{formErrors.email}</span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Số điện thoại</label>
-                <input
-                  type="tel"
-                  placeholder="Nhập số điện thoại (chỉ nhập được số)"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: formErrors.phone ? '2px solid #EF4444' : '1px solid #E0E5F2'
-                  }}
-                />
-                {formErrors.phone && (
-                  <div className="flex items-center gap-1 mt-1" style={{ color: '#EF4444' }}>
-                    <AlertCircle size={14} />
-                    <span className="text-xs">{formErrors.phone}</span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Vị trí</label>
-                <select
-                  value={formData.position}
-                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: '1px solid #E0E5F2'
-                  }}
-                >
-                  <option value="Pha chế">Pha chế</option>
-                  <option value="Phục vụ">Phục vụ</option>
-                  <option value="Quản lý">Quản lý</option>
-                  <option value="Bảo vệ">Bảo vệ</option>
-                  <option value="Giao hàng">Giao hàng</option>
-                  <option value="Kế toán">Kế toán</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Trạng thái</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: '#F4F7FE', 
-                    color: '#2B3674', 
-                    border: '1px solid #E0E5F2'
-                  }}
-                >
-                  <option value="Đang làm">Đang làm</option>
-                  <option value="Nghỉ việc">Nghỉ việc</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleUpdateEmployee}
-                disabled={modalLoading}
-                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
-                style={{ 
-                  backgroundColor: modalLoading ? '#A3AED0' : '#4318FF', 
-                  color: '#FFFFFF',
-                  cursor: modalLoading ? 'not-allowed' : 'pointer',
-                  opacity: modalLoading ? 0.7 : 1
-                }}
-              >
-                {modalLoading ? (
-                  <>
-                    <Loader size={16} style={{ animation: 'spin 0.8s linear infinite' }} />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  'Lưu thay đổi'
-                )}
-              </button>
-              <button
-                onClick={() => setShowEditModal(false)}
-                disabled={modalLoading}
-                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all"
-                style={{ 
-                  backgroundColor: '#E0E5F2', 
-                  color: '#2B3674',
-                  opacity: modalLoading ? 0.5 : 1,
-                  cursor: modalLoading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                Hủy
-              </button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Grant Account Modal */}
-      {showAccountModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Cấp tài khoản</h2>
-              <button
-                onClick={() => setShowAccountModal(false)}
-                className="p-2 rounded-lg"
-                style={{ backgroundColor: '#F4F7FE', color: '#2B3674' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div style={{ backgroundColor: '#EBF3FF', padding: '16px', borderRadius: '12px' }}>
-                <p className="text-sm font-semibold mb-2" style={{ color: '#4318FF' }}>
-                  Nhân viên: {selectedEmployee.fullname}
-                </p>
-                <p className="text-xs" style={{ color: '#8F9CB8' }}>
-                  Email: {selectedEmployee.email}
-                </p>
-              </div>
-
-              <div style={{ backgroundColor: '#FFF7E6', padding: '16px', borderRadius: '12px' }}>
-                <p className="text-sm font-semibold mb-3" style={{ color: '#FF9900' }}>
-                  Hướng dẫn cấp tài khoản:
-                </p>
-                <ol className="text-xs space-y-2" style={{ color: '#8F9CB8' }}>
-                  <li>1. Liên hệ Admin Supabase để tạo user trong Auth</li>
-                  <li>2. Copy User ID (UUID) từ Supabase</li>
-                  <li>3. Thêm bản ghi vào bảng accounts với accountid = UUID</li>
-                  <li>4. Ghi rõ role (admin/manager/staff) và branchid</li>
-                  <li>5. Lưu lại và thông báo tài khoản cho nhân viên</li>
-                </ol>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>
-                  User ID (Supabase Auth)
-                </label>
-                <input
-                  type="text"
-                  placeholder="UUID từ Supabase (a1b2c3d4...)"
-                  className="w-full px-4 py-2 rounded-lg text-sm"
-                  style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
-                />
-                <p className="text-xs mt-2" style={{ color: '#8F9CB8' }}>
-                  Hãy copy UUID từ Supabase Auth sau khi tạo user
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowAccountModal(false)}
-                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all"
-                style={{ backgroundColor: '#E0E5F2', color: '#2B3674' }}
-              >
-                Đóng
-              </button>
-            </div>
-          </Card>
+          </div>
         </div>
       )}
     </div>
   )
 }
+
+export default Employees

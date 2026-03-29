@@ -1,405 +1,393 @@
-import { useState, useEffect } from 'react'
-import { Search, Mail, Phone } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Search, RefreshCw, Users } from 'lucide-react'
 import Toast from '@/components/Toast'
+import CustomerStats from '@/components/customers/CustomerStats'
+import CustomerTable, { type CustomerRow } from '@/components/customers/CustomerTable'
+import {
+  EditCustomerModal,
+  AdjustPointsModal,
+  ConfirmLockModal,
+  type EditCustomerData,
+  type AdjustPointsData,
+} from '@/components/customers/CustomerModals'
+import type { CustomerForAction } from '@/components/customers/CustomerActionMenu'
 
-interface Customer {
-  customerid: string
-  fullname: string
-  phone: string
-  email: string
-  totalpoints: number
-  membership: string
-  birthday: string | null
-  ordercount: number
-  totalspent: number
-  lastorderdate: string
-}
-
+// ─── Types ────────────────────────────────────────────────────────────────────────────
 interface ToastMessage {
   id: string
   message: string
   type: 'success' | 'error'
 }
 
-const colors = {
-  primary: '#4318FF',
-  text: '#2B3674',
-  textLight: '#8F9CB8',
-  border: '#E0E5F2',
-  success: '#05B75D',
-  error: '#F3685A',
-  warning: '#FEC90F',
-  background: '#F3F4F6',
-  lightBg: '#F4F7FE',
+// ─── Helpers ─────────────────────────────────────────────────────────────────────────
+function getRoleFlags(rawRole: string) {
+  const role = rawRole.toLowerCase()
+  const isSuperAdmin = role.includes('super')
+  const isBranchManager = !isSuperAdmin && (role.includes('manager') || role.includes('branch'))
+  return { isSuperAdmin, isBranchManager }
 }
 
-export default function CustomersPage() {
-  // ===== Auth - Read from localStorage =====
-  const userRole = (localStorage.getItem('userRole') || 'staff').toLowerCase()
-  const userBranchId = localStorage.getItem('userBranchId') || ''
-  const isSuperAdmin = userRole.toLowerCase().includes('super')
+function aggregateCustomers(customersData: any[], ordersData: any[]): CustomerRow[] {
+  const map: Record<string, CustomerRow> = {}
 
-  // ===== State =====
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
+  customersData.forEach((c: any) => {
+    map[c.customerid] = {
+      customerid: c.customerid,
+      fullname: c.fullname || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      totalpoints: c.totalpoints || 0,
+      membership: c.membership || 'Thường',
+      birthday: c.birthday ?? null,
+      ordercount: 0,
+      totalspent: 0,
+      lastorderdate: '',
+      authid: c.authid || '',
+      isactive: true, // default active; updated locally after lock/unlock actions
+    }
+  })
+
+  ordersData.forEach((o: any) => {
+    const row = map[o.customerid]
+    if (!row) return
+    row.ordercount++
+    row.totalspent += o.totalamount || 0
+    const t = new Date(o.orderdate).getTime()
+    const last = row.lastorderdate ? new Date(row.lastorderdate).getTime() : 0
+    if (t > last) row.lastorderdate = o.orderdate
+  })
+
+  return Object.values(map).sort((a, b) => {
+    if (b.ordercount !== a.ordercount) return b.ordercount - a.ordercount
+    return new Date(b.lastorderdate || 0).getTime() - new Date(a.lastorderdate || 0).getTime()
+  })
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function CustomersPage() {
+  // ── Auth ──
+  const rawRole = localStorage.getItem('userRole') || 'staff'
+  const userBranchId = localStorage.getItem('userBranchId') || ''
+  const { isSuperAdmin, isBranchManager } = getRoleFlags(rawRole)
+
+  // ── Data state ──
+  const [customers, setCustomers] = useState<CustomerRow[]>([])
+  const [filteredCustomers, setFilteredCustomers] = useState<CustomerRow[]>([])
   const [searchText, setSearchText] = useState('')
   const [loading, setLoading] = useState(false)
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([])
 
-  // ===== Lifecycle =====
-  useEffect(() => {
-    loadCustomers()
+  // ── Modal state ──
+  const [editTarget, setEditTarget] = useState<EditCustomerData | null>(null)
+  const [pointsTarget, setPointsTarget] = useState<AdjustPointsData | null>(null)
+  const [lockTarget, setLockTarget] = useState<EditCustomerData | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [pointsLoading, setPointsLoading] = useState(false)
+  const [lockLoading, setLockLoading] = useState(false)
+
+  // ── Toast helper ──
+  const addToast = useCallback((message: string, type: 'success' | 'error') => {
+    const id = Date.now().toString()
+    setToastMessages(prev => [...prev, { id, message, type }])
+    setTimeout(() => setToastMessages(prev => prev.filter(t => t.id !== id)), 3000)
   }, [])
 
-  // Auto-filter when search text changes
+  // ── Load data ──
+  const loadCustomers = useCallback(async () => {
+    try {
+      setLoading(true)
+      const { supabase } = await import('@/utils/supabaseClient')
+
+      const CUSTOMER_SELECT = 'customerid, authid, fullname, phone, email, totalpoints, membership, birthday'
+
+      if (isSuperAdmin) {
+        // Super Admin: all customers + all orders
+        const [{ data: customersData, error: cErr }, { data: ordersData, error: oErr }] =
+          await Promise.all([
+            supabase.from('customers').select(CUSTOMER_SELECT),
+            supabase.from('orders').select('customerid, totalamount, orderdate'),
+          ])
+
+        if (cErr) throw cErr
+        if (oErr) throw oErr
+
+        const list = aggregateCustomers(customersData ?? [], ordersData ?? [])
+        setCustomers(list)
+      } else {
+        // Branch Manager / Staff: scope to branch
+        if (!userBranchId) {
+          setCustomers([])
+          addToast('Không tìm thấy chi nhánh', 'error')
+          return
+        }
+
+        const { data: ordersData, error: oErr } = await supabase
+          .from('orders')
+          .select('customerid, totalamount, orderdate')
+          .eq('branchid', userBranchId)
+
+        if (oErr) throw oErr
+
+        const customerIds = [...new Set((ordersData ?? []).map((o: any) => o.customerid))]
+
+        if (customerIds.length === 0) {
+          setCustomers([])
+          return
+        }
+
+        const { data: customersData, error: cErr } = await supabase
+          .from('customers')
+          .select(CUSTOMER_SELECT)
+          .in('customerid', customerIds)
+
+        if (cErr) throw cErr
+
+        const list = aggregateCustomers(customersData ?? [], ordersData ?? [])
+        setCustomers(list)
+      }
+    } catch (err) {
+      console.error('[CustomersPage] loadCustomers:', err)
+      addToast('Lỗi tải danh sách khách hàng', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [isSuperAdmin, userBranchId, addToast])
+
+  useEffect(() => { loadCustomers() }, [loadCustomers])
+
+  // ── Search filter ──
   useEffect(() => {
-    if (searchText.trim() === '') {
+    if (!searchText.trim()) {
       setFilteredCustomers(customers)
     } else {
-      const search = searchText.toLowerCase()
+      const q = searchText.toLowerCase()
       setFilteredCustomers(
         customers.filter(
           c =>
-            c.fullname.toLowerCase().includes(search) ||
-            c.phone.toLowerCase().includes(search) ||
-            c.email.toLowerCase().includes(search)
+            c.fullname.toLowerCase().includes(q) ||
+            c.phone.toLowerCase().includes(q) ||
+            c.email.toLowerCase().includes(q)
         )
       )
     }
   }, [searchText, customers])
 
-  // ===== Load Customers =====
-  const loadCustomers = async () => {
+  // ─── Action Handlers ────────────────────────────────────────────────────────
+
+  const handleOpenEdit = (c: CustomerForAction) => {
+    const full = customers.find(x => x.customerid === c.customerid)
+    if (full) setEditTarget({ customerid: full.customerid, fullname: full.fullname, phone: full.phone, email: full.email, isactive: full.isactive })
+  }
+
+  const handleSubmitEdit = async (data: { fullname: string; phone: string; email: string }) => {
+    if (!editTarget) return
     try {
-      setLoading(true)
+      setEditLoading(true)
       const { supabase } = await import('@/utils/supabaseClient')
+      const { error } = await supabase
+        .from('customers')
+        .update({ fullname: data.fullname, phone: data.phone, email: data.email })
+        .eq('customerid', editTarget.customerid)
+      if (error) throw error
 
-      // ===== SUPER ADMIN: Fetch ALL customers =====
-      if (isSuperAdmin) {
-        const { data: customersData, error: customersError } = await supabase
-          .from('customers')
-          .select('customerid, fullname, phone, email, totalpoints, membership, birthday')
-
-        if (customersError) throw customersError
-
-        // Get all orders to calculate stats
-        const { data: allOrdersData, error: allOrdersError } = await supabase
-          .from('orders')
-          .select('customerid, totalamount, orderdate')
-
-        if (allOrdersError) throw allOrdersError
-
-        // Aggregate order data per customer
-        const customerStats: { [key: string]: any } = {}
-        customersData?.forEach((customer: any) => {
-          customerStats[customer.customerid] = {
-            customerid: customer.customerid,
-            fullname: customer.fullname,
-            phone: customer.phone || '',
-            email: customer.email || '',
-            totalpoints: customer.totalpoints || 0,
-            membership: customer.membership || 'Thường',
-            birthday: customer.birthday,
-            ordercount: 0,
-            totalspent: 0,
-            lastorderdate: '',
-          }
-        })
-
-        allOrdersData?.forEach((order: any) => {
-          if (customerStats[order.customerid]) {
-            customerStats[order.customerid].ordercount++
-            customerStats[order.customerid].totalspent += order.totalamount
-            const orderDate = new Date(order.orderdate).getTime()
-            const lastDate = new Date(customerStats[order.customerid].lastorderdate || 0).getTime()
-            if (orderDate > lastDate) {
-              customerStats[order.customerid].lastorderdate = order.orderdate
-            }
-          }
-        })
-
-        const customerList = Object.values(customerStats).sort((a, b) => {
-          if (b.ordercount !== a.ordercount) return b.ordercount - a.ordercount
-          return new Date(b.lastorderdate).getTime() - new Date(a.lastorderdate).getTime()
-        })
-
-        setCustomers(customerList)
-        setFilteredCustomers(customerList)
-        addToast(`Tải ${customerList.length} khách hàng thành công`, 'success')
-      } else {
-        // ===== MANAGER: Fetch customers from branch orders =====
-        if (!userBranchId) {
-          setCustomers([])
-          setFilteredCustomers([])
-          addToast('Không tìm thấy chi nhánh', 'error')
-          return
-        }
-
-        // Get orders for this branch
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('customerid, totalamount, orderdate')
-          .eq('branchid', userBranchId)
-
-        if (ordersError) throw ordersError
-
-        // Get unique customer IDs
-        const customerIds = [...new Set(ordersData?.map((o: any) => o.customerid) || [])]
-
-        if (customerIds.length === 0) {
-          setCustomers([])
-          setFilteredCustomers([])
-          return
-        }
-
-        // Get customer details
-        const { data: customersData, error: customersError } = await supabase
-          .from('customers')
-          .select('customerid, fullname, phone, email, totalpoints, membership, birthday')
-          .in('customerid', customerIds)
-
-        if (customersError) throw customersError
-
-        // Aggregate order data per customer
-        const customerStats: { [key: string]: any } = {}
-        customersData?.forEach((customer: any) => {
-          customerStats[customer.customerid] = {
-            customerid: customer.customerid,
-            fullname: customer.fullname,
-            phone: customer.phone || '',
-            email: customer.email || '',
-            totalpoints: customer.totalpoints || 0,
-            membership: customer.membership || 'Thường',
-            birthday: customer.birthday,
-            ordercount: 0,
-            totalspent: 0,
-            lastorderdate: '',
-          }
-        })
-
-        ordersData?.forEach((order: any) => {
-          if (customerStats[order.customerid]) {
-            customerStats[order.customerid].ordercount++
-            customerStats[order.customerid].totalspent += order.totalamount
-            const orderDate = new Date(order.orderdate).getTime()
-            const lastDate = new Date(customerStats[order.customerid].lastorderdate || 0).getTime()
-            if (orderDate > lastDate) {
-              customerStats[order.customerid].lastorderdate = order.orderdate
-            }
-          }
-        })
-
-        const customerList = Object.values(customerStats).sort((a, b) => {
-          if (b.ordercount !== a.ordercount) return b.ordercount - a.ordercount
-          return new Date(b.lastorderdate).getTime() - new Date(a.lastorderdate).getTime()
-        })
-
-        setCustomers(customerList)
-        setFilteredCustomers(customerList)
-        addToast(`Tải ${customerList.length} khách hàng thành công`, 'success')
-      }
-    } catch (error) {
-      console.error('Error loading customers:', error)
-      addToast('Lỗi tải danh sách khách hàng', 'error')
+      setCustomers(prev =>
+        prev.map(c =>
+          c.customerid === editTarget.customerid
+            ? { ...c, fullname: data.fullname, phone: data.phone, email: data.email }
+            : c
+        )
+      )
+      addToast('Cập nhật thông tin thành công', 'success')
+      setEditTarget(null)
+    } catch (err) {
+      console.error('[Edit]', err)
+      addToast('Lỗi cập nhật thông tin', 'error')
     } finally {
-      setLoading(false)
+      setEditLoading(false)
     }
   }
 
-  // ===== Toast =====
-  const addToast = (message: string, type: 'success' | 'error') => {
-    const id = Date.now().toString()
-    setToastMessages(prev => [...prev, { id, message, type }])
-    setTimeout(() => {
-      setToastMessages(prev => prev.filter(t => t.id !== id))
-    }, 3000)
+  const handleOpenPoints = (c: CustomerForAction) => {
+    const full = customers.find(x => x.customerid === c.customerid)
+    if (full) setPointsTarget({ customerid: full.customerid, fullname: full.fullname, totalpoints: full.totalpoints })
   }
 
-  // ===== Render =====
+  const handleSubmitPoints = async (delta: number, reason: string) => {
+    if (!pointsTarget) return
+    try {
+      setPointsLoading(true)
+      const { supabase } = await import('@/utils/supabaseClient')
+      const newPoints = pointsTarget.totalpoints + delta
+
+      const { error: updateErr } = await supabase
+        .from('customers')
+        .update({ totalpoints: newPoints })
+        .eq('customerid', pointsTarget.customerid)
+      if (updateErr) throw updateErr
+
+      // Ghi lịch sử điểm
+      await supabase.from('pointhistory').insert({
+        customerid: pointsTarget.customerid,
+        pointchange: delta,
+        type: 'adjustment',
+        description: reason,
+        createddate: new Date().toISOString(),
+      })
+
+      setCustomers(prev =>
+        prev.map(c =>
+          c.customerid === pointsTarget.customerid ? { ...c, totalpoints: newPoints } : c
+        )
+      )
+      addToast(
+        `${delta > 0 ? 'Cộng' : 'Trừ'} ${Math.abs(delta)} điểm thành công`,
+        'success'
+      )
+      setPointsTarget(null)
+    } catch (err) {
+      console.error('[Points]', err)
+      addToast('Lỗi điều chỉnh điểm', 'error')
+    } finally {
+      setPointsLoading(false)
+    }
+  }
+
+  const handleOpenLock = (c: CustomerForAction) => {
+    const full = customers.find(x => x.customerid === c.customerid)
+    if (full) setLockTarget({ customerid: full.customerid, fullname: full.fullname, phone: full.phone, email: full.email, authid: full.authid, isactive: full.isactive })
+  }
+
+  const handleConfirmLock = async () => {
+    if (!lockTarget) return
+    const wantToLock = lockTarget.isactive !== false // true = đang active → muốn khóa
+
+    if (!lockTarget.authid) {
+      addToast('Khách hàng này chưa liên kết tài khoản đăng nhập', 'error')
+      setLockTarget(null)
+      return
+    }
+
+    try {
+      setLockLoading(true)
+      const { authAdminService } = await import('@/services/authAdminService')
+      await authAdminService.updateAccountStatus({
+        userId: lockTarget.authid,
+        isBanned: wantToLock,
+      })
+
+      setCustomers(prev =>
+        prev.map(c =>
+          c.customerid === lockTarget.customerid ? { ...c, isactive: !wantToLock } : c
+        )
+      )
+      addToast(wantToLock ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản', 'success')
+      setLockTarget(null)
+    } catch (err) {
+      console.error('[Lock]', err)
+      addToast('Lỗi thay đổi trạng thái tài khoản', 'error')
+    } finally {
+      setLockLoading(false)
+    }
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
   return (
-    <div style={{ padding: '24px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ color: colors.text, fontSize: '32px', fontWeight: '700', margin: 0 }}>
-          Danh sách khách hàng
-        </h1>
-        <p style={{ color: colors.textLight, fontSize: '14px', margin: '8px 0 0 0' }}>
-          Quản lý và theo dõi thông tin khách hàng đã mua hàng
-        </p>
-      </div>
-
-      {/* Search Bar */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{
-          position: 'relative',
-          maxWidth: '400px',
-        }}>
-          <Search
-            size={18}
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: colors.textLight,
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên, số điện thoại, email..."
-            value={searchText}
-            onChange={e => setSearchText(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 12px 10px 40px',
-              border: `1px solid ${colors.border}`,
-              borderRadius: '8px',
-              fontSize: '14px',
-              color: colors.text,
-            }}
-          />
+    <div className="p-6">
+      {/* ── Page Header ── */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <Users className="w-6 h-6 text-blue-600" />
+            Danh sách khách hàng
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Quản lý và theo dõi thông tin khách hàng
+            {!isSuperAdmin && userBranchId ? ' tại chi nhánh của bạn' : ' toàn hệ thống'}
+          </p>
         </div>
+        <button
+          onClick={loadCustomers}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Làm mới
+        </button>
       </div>
 
-      {/* Customers Table */}
-      <div style={{
-        background: 'white',
-        borderRadius: '20px',
-        border: `1px solid ${colors.border}`,
-        boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px',
-        padding: '24px',
-        overflowX: 'auto',
-      }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-            ⏳ Đang tải...
-          </div>
-        ) : filteredCustomers.length > 0 ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: colors.background, borderBottom: `2px solid ${colors.border}` }}>
-                <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>STT</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Tên khách hàng</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Điện thoại</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Email</th>
-                <th style={{ padding: '12px', textAlign: 'center', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Số đơn</th>
-                <th style={{ padding: '12px', textAlign: 'right', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Chi tiêu (đ)</th>
-                <th style={{ padding: '12px', textAlign: 'center', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Điểm</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Membershp</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Đơn cuối</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCustomers.map((customer, idx) => (
-                <tr key={customer.customerid} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                  <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>{idx + 1}</td>
-                  <td style={{ padding: '12px', color: colors.text, fontSize: '14px', fontWeight: '600' }}>
-                    {customer.fullname}
-                  </td>
-                  <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Phone size={14} style={{ color: colors.primary }} />
-                      {customer.phone}
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px', color: colors.textLight, fontSize: '13px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Mail size={14} style={{ color: colors.primary }} />
-                      {customer.email}
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center', color: colors.primary, fontWeight: '600', fontSize: '14px' }}>
-                    {customer.ordercount}
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'right', color: colors.primary, fontWeight: '600', fontSize: '14px' }}>
-                    {customer.totalspent.toLocaleString('vi-VN')}
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center', color: colors.warning, fontWeight: '600', fontSize: '14px' }}>
-                    {customer.totalpoints}
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '13px' }}>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '4px 10px',
-                        backgroundColor:
-                          customer.membership === 'VIP' ? `${colors.primary}20`
-                            : customer.membership === 'Silver' ? `${colors.textLight}20`
-                              : `${colors.success}20`,
-                        color:
-                          customer.membership === 'VIP' ? colors.primary
-                            : customer.membership === 'Silver' ? colors.textLight
-                              : colors.success,
-                        borderRadius: '4px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      {customer.membership}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', color: colors.textLight, fontSize: '13px' }}>
-                    {customer.lastorderdate ? new Date(customer.lastorderdate).toLocaleDateString('vi-VN') : '-'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-            {customers.length === 0 ? 'Không có khách hàng nào' : 'Không tìm thấy khách hàng'}
-          </div>
-        )}
-      </div>
+      {/* ── Stats (top) ── */}
+      <CustomerStats
+        customers={customers}
+        showFinancial={isSuperAdmin || isBranchManager}
+      />
 
-      {/* Summary */}
-      {customers.length > 0 && (
-        <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            border: `1px solid ${colors.border}`,
-            textAlign: 'center',
-          }}>
-            <p style={{ color: colors.textLight, fontSize: '12px', margin: '0 0 8px 0' }}>Tổng khách hàng</p>
-            <h3 style={{ color: colors.primary, fontSize: '24px', fontWeight: '700', margin: 0 }}>
-              {customers.length}
-            </h3>
+      {/* ── Table Card ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        {/* Search Bar */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
+          <div className="relative max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Tìm theo tên, SĐT, email..."
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
           </div>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            border: `1px solid ${colors.border}`,
-            textAlign: 'center',
-          }}>
-            <p style={{ color: colors.textLight, fontSize: '12px', margin: '0 0 8px 0' }}>Tổng chi tiêu</p>
-            <h3 style={{ color: colors.primary, fontSize: '20px', fontWeight: '700', margin: 0 }}>
-              {customers.reduce((sum, c) => sum + c.totalspent, 0).toLocaleString('vi-VN')} đ
-            </h3>
-          </div>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '16px',
-            border: `1px solid ${colors.border}`,
-            textAlign: 'center',
-          }}>
-            <p style={{ color: colors.textLight, fontSize: '12px', margin: '0 0 8px 0' }}>Trung bình chi tiêu</p>
-            <h3 style={{ color: colors.primary, fontSize: '20px', fontWeight: '700', margin: 0 }}>
-              {customers.length > 0 ? (customers.reduce((sum, c) => sum + c.totalspent, 0) / customers.length).toLocaleString('vi-VN') : 0} đ
-            </h3>
-          </div>
+          {customers.length > 0 && (
+            <p className="text-sm text-slate-400 whitespace-nowrap">
+              {filteredCustomers.length} / {customers.length} khách hàng
+            </p>
+          )}
         </div>
-      )}
 
-      {/* Toast */}
-      {toastMessages.map(toast => (
+        {/* Table */}
+        <CustomerTable
+          customers={filteredCustomers}
+          loading={loading}
+          isSuperAdmin={isSuperAdmin}
+          isBranchManager={isBranchManager}
+          onEdit={handleOpenEdit}
+          onManagePoints={handleOpenPoints}
+          onToggleLock={handleOpenLock}
+        />
+      </div>
+
+      {/* ── Modals ── */}
+      <EditCustomerModal
+        show={editTarget !== null}
+        customer={editTarget}
+        loading={editLoading}
+        onClose={() => setEditTarget(null)}
+        onSubmit={handleSubmitEdit}
+      />
+
+      <AdjustPointsModal
+        show={pointsTarget !== null}
+        customer={pointsTarget}
+        loading={pointsLoading}
+        onClose={() => setPointsTarget(null)}
+        onSubmit={handleSubmitPoints}
+      />
+
+      <ConfirmLockModal
+        show={lockTarget !== null}
+        customer={lockTarget}
+        loading={lockLoading}
+        onClose={() => setLockTarget(null)}
+        onConfirm={handleConfirmLock}
+      />
+
+      {/* ── Toast ── */}
+      {toastMessages.map(t => (
         <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToastMessages(prev => prev.filter(t => t.id !== toast.id))}
+          key={t.id}
+          message={t.message}
+          type={t.type}
+          onClose={() => setToastMessages(prev => prev.filter(x => x.id !== t.id))}
         />
       ))}
     </div>
