@@ -15,6 +15,7 @@ import { Ingredient, Recipe, Product, BranchInventory } from '@/types'
 import Toast from '@/components/Toast'
 import { RestockModal } from '@/components/inventory/RestockModal'
 import { AuditModal } from '@/components/inventory/AuditModal'
+import { AddIngredientModal } from '@/components/inventory/AddIngredientModal'
 import { InventoryCategoriesTab } from '@/components/inventory/InventoryCategoriesTab'
 import { InventoryStockTab } from '@/components/inventory/InventoryStockTab'
 import { RecipesTab } from '@/components/inventory/RecipesTab'
@@ -48,7 +49,7 @@ const colors = {
 // ============ MAIN COMPONENT ============
 export default function Inventory() {
   // ===== Auth - Read from localStorage (set during login) =====
-  const userRole = (localStorage.getItem('userRole') || 'staff').toLowerCase()
+  const userRole = (localStorage.getItem('userRole') || 'branch manager').toLowerCase()
   const userBranchId = localStorage.getItem('userBranchId') || ''
   const isSuperAdmin = userRole.toLowerCase().includes('super')
 
@@ -68,6 +69,7 @@ export default function Inventory() {
   // ===== Categories Tab State =====
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [searchIngredient, setSearchIngredient] = useState('')
+  const [isAddIngredientModalOpen, setIsAddIngredientModalOpen] = useState(false)
 
   // ===== Inventory Tab State =====
   const [branches, setBranches] = useState<Branch[]>([])
@@ -186,6 +188,24 @@ export default function Inventory() {
     setTimeout(() => {
       setToastMessages(prev => prev.filter(t => t.id !== id))
     }, 3000)
+  }
+
+  const handleAddIngredient = async (data: { name: string; unit: string; baseprice: string; minstocklevel: string }) => {
+    try {
+      await ingredientService.createIngredient({
+        name: data.name,
+        unit: data.unit,
+        baseprice: Number(data.baseprice),
+        minstocklevel: Number(data.minstocklevel),
+      })
+      showToast(`Đã thêm nguyên liệu '${data.name}' thành công`, 'success')
+      // Reload ingredients list
+      const updatedIngredients = await ingredientService.getIngredients()
+      setIngredients(updatedIngredients || [])
+    } catch (error) {
+      console.error('Error adding ingredient:', error)
+      throw error
+    }
   }
 
   const handleRestock = async () => {
@@ -422,10 +442,18 @@ export default function Inventory() {
         currentStock={currentStockForAudit}
       />
 
+      {/* Add Ingredient Modal */}
+      <AddIngredientModal
+        isOpen={isAddIngredientModalOpen}
+        onClose={() => setIsAddIngredientModalOpen(false)}
+        onSubmit={handleAddIngredient}
+      />
+
       <h1 style={{ color: colors.text, marginBottom: '24px', overflow: 'visible', whiteSpace: 'normal' }}>Quản lý Kho hàng</h1>
 
       {/* Tab Navigation */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', borderBottom: `1px solid ${colors.border}` }}>
+        {/* Danh mục tab */}
         <TabButton
           active={activeTab === 'categories'}
           onClick={() => setActiveTab('categories')}
@@ -451,7 +479,9 @@ export default function Inventory() {
         <InventoryCategoriesTab 
           ingredients={ingredients} 
           searchIngredient={searchIngredient} 
-          onSearchChange={setSearchIngredient} 
+          onSearchChange={setSearchIngredient}
+          isSuperAdmin={isSuperAdmin}
+          onAddCategory={() => setIsAddIngredientModalOpen(true)}
         />
       )}
       {activeTab === 'inventory' && (
@@ -463,6 +493,7 @@ export default function Inventory() {
             loadBranchInventory(branchId)
           }}
           branchInventory={branchInventory}
+          canEdit={true}
           onRestockClick={(ingredientId: string) => {
             setSelectedIngredientId(ingredientId)
             setIsRestockModalOpen(true)
@@ -489,6 +520,7 @@ export default function Inventory() {
           onFormChange={onFormChange}
           onAddIngredient={handleAddIngredientToProduct}
           onRemoveRecipe={handleRemoveRecipe}
+          isSuperAdmin={isSuperAdmin}
         />
       )}
     </div>

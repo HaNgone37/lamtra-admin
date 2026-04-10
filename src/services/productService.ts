@@ -55,6 +55,7 @@ export const productService = {
     subtitle: string
     description: string
     baseprice: number
+    saleprice: number | null
     imageurl: string
     status: string
     categoryid: string
@@ -118,6 +119,58 @@ export const productService = {
       if (error) throw error
     } catch (error) {
       console.error('Error deleting product:', error)
+      throw error
+    }
+  },
+
+  // ============= GET PRODUCTS WITH BRANCH STATUS =============
+  async getProductsWithBranchStatus(branchId: number): Promise<(Product & { isAvailableAtBranch?: boolean })[]> {
+    try {
+      // Fetch all products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (productsError) throw productsError
+
+      // Fetch branch product statuses (branchproductstatus has: branchid, productid, status)
+      const { data: statusesData, error: statusesError } = await supabase
+        .from('branchproductstatus')
+        .select('*')
+        .eq('branchid', branchId)
+
+      if (statusesError) throw statusesError
+
+      // Merge data: map products with their branch-specific availability
+      // status can be 'Còn món' (available) or 'Hết món' (unavailable)
+      const statusMap = new Map(
+        (statusesData || []).map(s => [s.productid, { isAvailableAtBranch: s.status === 'Còn món' }])
+      )
+
+      return (productsData || []).map(product => ({
+        ...product,
+        isAvailableAtBranch: statusMap.get(product.productid)?.isAvailableAtBranch ?? true
+      }))
+    } catch (error) {
+      console.error('Error fetching products with branch status:', error)
+      throw error
+    }
+  },
+
+  // ============= UPDATE BRANCH PRODUCT STATUS =============
+  async updateBranchProductStatus(productId: string | number, branchId: number, isavailable: boolean): Promise<void> {
+    try {
+      const newStatus = isavailable ? 'Còn món' : 'Hết món'
+      const { error } = await supabase
+        .from('branchproductstatus')
+        .update({ status: newStatus })
+        .eq('productid', productId)
+        .eq('branchid', branchId)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('Error updating branch product status:', error)
       throw error
     }
   }
@@ -384,6 +437,22 @@ export const branchProductStatusService = {
     } catch (error) {
       console.error('Error syncing product to all branches:', error)
       throw error
+    }
+  },
+
+  async getBranchById(branchId: number): Promise<Branch | null> {
+    try {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('branchid', branchId)
+        .single()
+      
+      if (error) throw error
+      return data || null
+    } catch (error) {
+      console.error('Error fetching branch:', error)
+      return null
     }
   }
 }

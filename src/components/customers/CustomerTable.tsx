@@ -1,4 +1,4 @@
-import { Users, Mail, Phone, CreditCard, Star, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Users, Mail, Phone, CreditCard, Star, Loader2 } from 'lucide-react'
 import CustomerActionMenu, { type CustomerForAction } from './CustomerActionMenu'
 
 export interface CustomerRow {
@@ -13,7 +13,6 @@ export interface CustomerRow {
   totalspent: number
   lastorderdate: string
   authid?: string
-  isactive?: boolean
 }
 
 interface CustomerTableProps {
@@ -23,7 +22,6 @@ interface CustomerTableProps {
   isBranchManager: boolean
   onEdit: (customer: CustomerForAction) => void
   onManagePoints: (customer: CustomerForAction) => void
-  onToggleLock: (customer: CustomerForAction) => void
 }
 
 const MEMBERSHIP_STYLE: Record<string, { badge: string }> = {
@@ -44,7 +42,6 @@ export default function CustomerTable({
   isBranchManager,
   onEdit,
   onManagePoints,
-  onToggleLock,
 }: CustomerTableProps) {
   const canSeeFinancial = isSuperAdmin || isBranchManager
   const canSeeEmail = isSuperAdmin || isBranchManager
@@ -113,9 +110,6 @@ export default function CustomerTable({
                 Membership
               </span>
             </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">
-              Trạng thái
-            </th>
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Đơn cuối
             </th>
@@ -128,7 +122,6 @@ export default function CustomerTable({
         </thead>
         <tbody>
           {customers.map((c, idx) => {
-            const isActive = c.isactive !== false
             return (
               <tr
                 key={c.customerid}
@@ -184,21 +177,6 @@ export default function CustomerTable({
                   </span>
                 </td>
 
-                {/* Trạng thái */}
-                <td className="px-4 py-3 text-center">
-                  {isActive ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Hoạt động
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600">
-                      <XCircle className="w-3.5 h-3.5" />
-                      Đang khóa
-                    </span>
-                  )}
-                </td>
-
                 {/* Đơn cuối */}
                 <td className="px-4 py-3">
                   <span className="text-sm text-slate-500">
@@ -216,7 +194,6 @@ export default function CustomerTable({
                       isSuperAdmin={isSuperAdmin}
                       onEdit={onEdit}
                       onManagePoints={onManagePoints}
-                      onToggleLock={onToggleLock}
                     />
                   </td>
                 )}

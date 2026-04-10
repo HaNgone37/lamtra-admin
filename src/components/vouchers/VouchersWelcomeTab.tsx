@@ -28,15 +28,12 @@ interface VouchersWelcomeTabProps {
   isLoading: boolean
   isSaving: boolean
   onToggle: (voucherid: number) => void
-  onSave: () => void
 }
 
 export const VouchersWelcomeTab: React.FC<VouchersWelcomeTabProps> = ({
   vouchers,
   isLoading,
-  isSaving,
   onToggle,
-  onSave,
 }) => {
   // Sort vouchers: active first, then by expiry date
   const sortedVouchers = useMemo(() => {
@@ -64,45 +61,6 @@ export const VouchersWelcomeTab: React.FC<VouchersWelcomeTabProps> = ({
 
   return (
     <div>
-      {/* Header */}
-      <div style={{
-        backgroundColor: COLORS.card,
-        borderRadius: '20px',
-        border: `1px solid ${COLORS.border}`,
-        padding: '20px',
-        marginBottom: '20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-        <div>
-          <h3 style={{ fontSize: '16px', fontWeight: '600', color: COLORS.text, margin: 0, marginBottom: '4px' }}>
-            Chiến Dịch Chào Mừng Thành Viên Mới
-          </h3>
-          <p style={{ fontSize: '12px', color: COLORS.textLight, margin: 0 }}>
-            Chọn voucher để tặng khách hàng mới
-          </p>
-        </div>
-        <button
-          onClick={onSave}
-          disabled={isSaving}
-          style={{
-            padding: '10px 24px',
-            fontSize: '14px',
-            fontWeight: '600',
-            border: 'none',
-            borderRadius: '12px',
-            backgroundColor: isSaving ? COLORS.textLight : COLORS.primary,
-            color: COLORS.card,
-            cursor: isSaving ? 'not-allowed' : 'pointer',
-            opacity: isSaving ? 0.5 : 1,
-            transition: 'all 0.3s ease',
-          }}
-        >
-          {isSaving ? 'Đang lưu...' : 'Lưu Cài Đặt'}
-        </button>
-      </div>
-
       {/* Content */}
       {isLoading ? (
         <div style={{

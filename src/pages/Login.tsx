@@ -108,7 +108,7 @@ export const Login: React.FC = () => {
 
           {/* Footer */}
           <p className="text-center text-gray-600 text-sm mt-6">
-            © 2024 LAM TRÀ System. All rights reserved.
+            © 2026 LAM TRÀ System. All rights reserved.
           </p>
         </div>
 

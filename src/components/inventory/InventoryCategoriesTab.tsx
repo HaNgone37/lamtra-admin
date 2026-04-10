@@ -1,4 +1,5 @@
 import React from 'react'
+import { Plus } from 'lucide-react'
 import { Ingredient } from '@/types'
 
 // ============ COLOR SCHEME ============
@@ -17,12 +18,16 @@ interface InventoryCategoriesTabProps {
   ingredients: Ingredient[]
   searchIngredient: string
   onSearchChange: (value: string) => void
+  isSuperAdmin: boolean
+  onAddCategory: () => void
 }
 
 export const InventoryCategoriesTab: React.FC<InventoryCategoriesTabProps> = ({
   ingredients,
   searchIngredient,
   onSearchChange,
+  isSuperAdmin,
+  onAddCategory,
 }) => {
   const filteredIngredients = ingredients.filter(ing =>
     ing.name.toLowerCase().includes(searchIngredient.toLowerCase())
@@ -47,20 +52,44 @@ export const InventoryCategoriesTab: React.FC<InventoryCategoriesTabProps> = ({
 
   return (
     <div style={{ marginTop: '20px' }}>
-      <div style={{ marginBottom: '16px' }}>
-        <input
-          type="text"
-          placeholder="Tìm kiếm nguyên liệu..."
-          value={searchIngredient}
-          onChange={e => onSearchChange(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '10px 12px',
-            border: `1px solid ${colors.border}`,
-            borderRadius: '6px',
-            fontSize: '14px',
-          }}
-        />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '12px' }}>
+        <div style={{ flex: 1 }}>
+          <input
+            type="text"
+            placeholder="Tìm kiếm nguyên liệu..."
+            value={searchIngredient}
+            onChange={e => onSearchChange(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: `1px solid ${colors.border}`,
+              borderRadius: '6px',
+              fontSize: '14px',
+            }}
+          />
+        </div>
+        {isSuperAdmin && (
+          <button
+            onClick={onAddCategory}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              backgroundColor: colors.primary,
+              color: 'white',
+              border: 'none',
+              padding: '10px 16px',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <Plus size={18} />
+            Thêm nguyên liệu
+          </button>
+        )}
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>

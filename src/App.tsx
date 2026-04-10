@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/services/AuthContext'
 import { Layout } from '@/components/Layout'
 import { Sidebar } from '@/components/Sidebar'
+import { BaristaLayout } from '@/components/BaristaLayout'
 import { Login } from '@/pages/Login'
 import { Dashboard } from '@/components/Dashboard'
 import { Products } from '@/pages/Products'
@@ -14,7 +15,6 @@ import Inventory from '@/pages/Inventory'
 import NewsPage from '@/pages/News'
 import AnalyticsPage from '@/pages/Analytics'
 import CustomersPage from '@/pages/Customers'
-// import BranchProductStatus from '@/pages/BranchProductStatus'
 import { supabase } from '@/utils/supabaseClient'
 import { Branch } from '@/types'
 
@@ -68,10 +68,17 @@ function App() {
     return <Login />
   }
 
+  // Phân luồng theo role: Staff → BaristaLayout, Admin/Manager → AdminLayout
+  const isStaff = user.role?.toLowerCase() === 'staff'
+
+  if (isStaff) {
+    return <BaristaLayout onLogout={logout} />
+  }
+
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard userRole={user.role} branchId={user.branchid ? String(user.branchid) : undefined} />
+        return <Dashboard />
       case 'products':
         return <Products />
       // case 'branchmenu':
@@ -95,7 +102,7 @@ function App() {
       case 'settings':
         return <Settings />
       default:
-        return <Dashboard userRole={user.role} branchId={user.branchid ? String(user.branchid) : undefined} />
+        return <Dashboard />
     }
   }
 

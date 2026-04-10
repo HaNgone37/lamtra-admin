@@ -8,10 +8,28 @@ import EditProductModal from '@/components/EditProductModal'
 import CategoryModal from '@/components/CategoryModal'
 import SizeModal from '@/components/SizeModal'
 import ToppingModal from '@/components/ToppingModal'
-import { productService, categoryService, sizeService, toppingService } from '@/services/productService'
+import { productService, categoryService, sizeService, toppingService, branchProductStatusService } from '@/services/productService'
+
+// ============= TYPES =============
+interface ProductWithBranchStatus extends Product {
+  branchStatusId?: string | number
+  isAvailableAtBranch?: boolean
+}
 
 // ============= STATUS BADGE WITH CLICK (TOGGLABLE) =============
-const TogglableStatusBadge = ({ status, type = 'product', onClick, isLoading }: { status: string | boolean; type?: 'product' | 'topping'; onClick: () => void; isLoading?: boolean }) => {
+const TogglableStatusBadge = ({ 
+  status, 
+  type = 'product', 
+  onClick, 
+  isLoading, 
+  disabled = false 
+}: { 
+  status: string | boolean
+  type?: 'product' | 'topping' | 'branch'
+  onClick: () => void
+  isLoading?: boolean
+  disabled?: boolean 
+}) => {
   let bgColor = '#F4F7FE'
   let textColor = '#2B3674'
   let dotColor = '#2B3674'
@@ -29,7 +47,7 @@ const TogglableStatusBadge = ({ status, type = 'product', onClick, isLoading }: 
       dotColor = '#C53030'
       label = 'Ngưng bán'
     }
-  } else if (type === 'topping') {
+  } else if (type === 'topping' || type === 'branch') {
     if (status === true) {
       bgColor = '#E6FFFA'
       textColor = '#047857'
@@ -46,7 +64,7 @@ const TogglableStatusBadge = ({ status, type = 'product', onClick, isLoading }: 
   return (
     <button
       onClick={onClick}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -58,11 +76,12 @@ const TogglableStatusBadge = ({ status, type = 'product', onClick, isLoading }: 
         backgroundColor: bgColor,
         color: textColor,
         border: 'none',
-        cursor: isLoading ? 'not-allowed' : 'pointer',
-        transition: 'all 0.2s'
+        cursor: disabled || isLoading ? 'not-allowed' : 'pointer',
+        transition: 'all 0.2s',
+        opacity: disabled ? 0.6 : 1
       }}
-      onMouseEnter={e => !isLoading && (e.currentTarget.style.opacity = '0.8')}
-      onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+      onMouseEnter={e => !isLoading && !disabled && (e.currentTarget.style.opacity = '0.8')}
+      onMouseLeave={e => (e.currentTarget.style.opacity = disabled ? '0.6' : '1')}
     >
       <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: dotColor }} />
       {label}
@@ -70,10 +89,80 @@ const TogglableStatusBadge = ({ status, type = 'product', onClick, isLoading }: 
   )
 }
 
+// ============= BRANCH PRODUCT STATUS SWITCH =============
+const BranchProductStatusSwitch = ({ 
+  isAvailable, 
+  onClick, 
+  isLoading = false, 
+  disabled = false 
+}: { 
+  isAvailable: boolean
+  onClick: () => void
+  isLoading?: boolean
+  disabled?: boolean 
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || isLoading}
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: isAvailable ? 'flex-end' : 'flex-start',
+        width: '52px',
+        height: '28px',
+        padding: '2px',
+        borderRadius: '14px',
+        border: 'none',
+        backgroundColor: isAvailable ? '#00A869' : '#CBD5E0',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'all 0.3s ease',
+        opacity: disabled ? 0.5 : 1
+      }}
+    >
+      {/* Toggle knob */}
+      <div
+        style={{
+          width: '24px',
+          height: '24px',
+          borderRadius: '50%',
+          backgroundColor: '#FFFFFF',
+          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        {isLoading && (
+          <div
+            style={{
+              width: '14px',
+              height: '14px',
+              borderRadius: '50%',
+              border: '2px solid #00A869',
+              borderTopColor: 'transparent',
+              animation: 'spin 0.6s linear infinite'
+            }}
+          />
+        )}
+      </div>
+    </button>
+  )
+}
+
 // ============= MAIN PRODUCTS COMPONENT =============
 export const Products: React.FC = () => {
+  // ============= RBAC & AUTH =============
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [isManager, setIsManager] = useState(false)
+  const [userBranchId, setUserBranchId] = useState<number | null>(null)
+  const [userBranchName, setUserBranchName] = useState<string>('Chi nhánh')
+
+  // ============= STATE =============
   const [activeTab, setActiveTab] = useState<'products' | 'categories' | 'sizes' | 'toppings'>('products')
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductWithBranchStatus[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [sizes, setSizes] = useState<Size[]>([])
   const [toppings, setToppings] = useState<Topping[]>([])
@@ -85,6 +174,7 @@ export const Products: React.FC = () => {
   const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [productStatusLoading, setProductStatusLoading] = useState<string | null>(null)
+  const [branchProductStatusLoading, setBranchProductStatusLoading] = useState<string | null>(null)
 
   // Modal states for categories
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
@@ -102,15 +192,57 @@ export const Products: React.FC = () => {
   const [selectedTopping, setSelectedTopping] = useState<Topping | null>(null)
   const [toppingStatusLoading, setToppingStatusLoading] = useState<string | null>(null)
 
+  // ============= GET ROLE & BRANCH INFO =============
+  useEffect(() => {
+    const roleStr = localStorage.getItem('userRole') || ''
+    const branchIdStr = localStorage.getItem('userBranchId') || ''
+
+    const role = roleStr.toLowerCase()
+    setIsSuperAdmin(role === 'super admin')
+    setIsManager(role === 'branch manager')
+    
+    const branchId = branchIdStr ? Number(branchIdStr) : null
+    setUserBranchId(branchId)
+
+    // Fetch branch name for Branch Manager
+    if (role === 'branch manager' && branchId) {
+      loadBranchInfo(branchId)
+    }
+  }, [])
+
+  // ============= LOAD BRANCH INFO =============
+  const loadBranchInfo = async (branchId: number) => {
+    try {
+      const branch = await branchProductStatusService.getBranchById(branchId)
+      if (branch) {
+        setUserBranchName(branch.name)
+      }
+    } catch (error) {
+      console.error('Error loading branch info:', error)
+    }
+  }
+
   // ============= LOAD DATA =============
   useEffect(() => {
     loadAllData()
-  }, [])
+  }, [isSuperAdmin, isManager, userBranchId])
 
   const loadAllData = async () => {
     try {
       setLoading(true)
-      await Promise.all([loadProducts(), loadCategories(), loadSizes(), loadToppings()])
+      
+      if (isSuperAdmin) {
+        // Super Admin: load all products without branch status
+        await loadProducts()
+      } else if (isManager) {
+        // Branch Manager: load products with branch status
+        if (userBranchId) {
+          await loadProductsWithBranchStatus()
+        }
+      }
+
+      // Load common data (categories, sizes, toppings) for all users
+      await Promise.all([loadCategories(), loadSizes(), loadToppings()])
     } catch (error) {
       showToast('Lỗi khi tải dữ liệu', 'error')
     } finally {
@@ -124,6 +256,16 @@ export const Products: React.FC = () => {
       setProducts(data)
     } catch (error) {
       console.error('Error loading products:', error)
+    }
+  }
+
+  const loadProductsWithBranchStatus = async () => {
+    try {
+      if (!userBranchId) return
+      const data = await productService.getProductsWithBranchStatus(userBranchId)
+      setProducts(data)
+    } catch (error) {
+      console.error('Error loading products with branch status:', error)
     }
   }
 
@@ -245,8 +387,29 @@ export const Products: React.FC = () => {
     }
   }
 
+  // ============= BRANCH PRODUCT STATUS HANDLERS =============
+  const handleBranchProductStatusToggle = async (productId: string | number, currentStatus: boolean, productName: string) => {
+    try {
+      setBranchProductStatusLoading(String(productId))
+      if (!userBranchId) throw new Error('Branch ID not found')
+      await productService.updateBranchProductStatus(productId, userBranchId, !currentStatus)
+      const newStatus = !currentStatus ? 'Còn món' : 'Hết món'
+      showToast(`Đã cập nhật trạng thái "${productName}" thành "${newStatus}" tại quán`, 'success')
+      if (userBranchId) {
+        await loadProductsWithBranchStatus()
+      }
+    } catch (error) {
+      console.error('Error updating branch product status:', error)
+      showToast('Lỗi khi cập nhật trạng thái sản phẩm', 'error')
+    } finally {
+      setBranchProductStatusLoading(null)
+    }
+  }
+
   // ============= CONTEXT-AWARE ADD BUTTON =============
   const handleAddNewClick = () => {
+    if (!isSuperAdmin) return // Only Super Admin can add new items
+
     switch (activeTab) {
       case 'products':
         setIsAddProductModalOpen(true)
@@ -269,8 +432,8 @@ export const Products: React.FC = () => {
     }
   }
 
-  const getCategoryName = (categoryId: string) => {
-    return categories.find(c => c.categoryid === categoryId)?.name || 'Chưa phân loại'
+  const getCategoryName = (categoryId: string | number) => {
+    return categories.find(c => String(c.categoryid) === String(categoryId))?.name || 'Chưa phân loại'
   }
 
   const tabConfig = [
@@ -280,36 +443,47 @@ export const Products: React.FC = () => {
     { id: 'toppings', label: 'Topping', icon: Sparkles }
   ]
 
+  // ============= DYNAMIC TITLE =============
+  const pageTitle = isManager ? `Thực đơn chi nhánh: ${userBranchName}` : 'Quản lý thực đơn'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '30px', fontWeight: 'bold', color: '#2B3674', margin: 0 }}>Quản lý thực đơn</h1>
-        <button
-          onClick={handleAddNewClick}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '8px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            border: 'none',
-            backgroundColor: '#4318FF',
-            color: '#FFFFFF',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#3810D9')}
-          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#4318FF')}
-        >
-          <Plus size={20} />
-          Thêm mới
-        </button>
+        <h1 style={{ fontSize: '30px', fontWeight: 'bold', color: '#2B3674', margin: 0 }}>{pageTitle}</h1>
+        {isSuperAdmin && (
+          <button
+            onClick={handleAddNewClick}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              border: 'none',
+              backgroundColor: '#4318FF',
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#3810D9')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '#4318FF')}
+          >
+            <Plus size={20} />
+            Thêm mới
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #E0E5F2' }}>
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #E0E5F2', overflowX: 'auto' }}>
         {tabConfig.map(tab => {
           const IconComponent = tab.icon
           const isActive = activeTab === tab.id
@@ -330,7 +504,8 @@ export const Products: React.FC = () => {
                 backgroundColor: 'transparent',
                 cursor: 'pointer',
                 color: isActive ? '#4318FF' : '#8F9CB8',
-                borderBottomColor: isActive ? '#4318FF' : 'transparent'
+                borderBottomColor: isActive ? '#4318FF' : 'transparent',
+                whiteSpace: 'nowrap'
               }}
             >
               <IconComponent size={18} />
@@ -342,7 +517,7 @@ export const Products: React.FC = () => {
 
       {/* PRODUCTS TAB */}
       {activeTab === 'products' && (
-        <Card>
+        <Card style={{ borderRadius: '20px', boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px', padding: '24px' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: '14px' }}>
               <thead>
@@ -352,19 +527,20 @@ export const Products: React.FC = () => {
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Danh mục</th>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Giá cơ sở</th>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Trạng thái</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>
+                  {isSuperAdmin && <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>}
+                  {isManager && <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Trạng thái tại quán</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 6 : 6} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Đang tải...
                     </td>
                   </tr>
                 ) : products.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 6 : 6} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Không tìm thấy sản phẩm
                     </td>
                   </tr>
@@ -390,52 +566,78 @@ export const Products: React.FC = () => {
                         </div>
                       </td>
                       <td style={{ padding: '12px 16px', color: '#8F9CB8' }}>{getCategoryName(String(product.categoryid))}</td>
-                      <td style={{ padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>{product.baseprice?.toLocaleString()} VNĐ</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {product.saleprice != null ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontWeight: '700', color: '#E53E3E', fontSize: '14px' }}>
+                              {product.saleprice.toLocaleString()} VNĐ
+                            </span>
+                            <span style={{ fontWeight: '400', color: '#A0AEC0', fontSize: '12px', textDecoration: 'line-through' }}>
+                              {product.baseprice?.toLocaleString()} VNĐ
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={{ fontWeight: '600', color: '#2B3674' }}>{product.baseprice?.toLocaleString()} VNĐ</span>
+                        )}
+                      </td>
                       <td style={{ padding: '12px 16px' }}>
                         <TogglableStatusBadge
                           status={product.status}
                           type="product"
-                          onClick={() => handleProductStatusToggle(String(product.productid), product.status)}
+                          onClick={() => isSuperAdmin && handleProductStatusToggle(String(product.productid), product.status)}
                           isLoading={productStatusLoading === String(product.productid)}
+                          disabled={!isSuperAdmin}
                         />
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedProduct(product)
-                              setIsEditProductModalOpen(true)
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#4318FF'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(String(product.productid))}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#F56565'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+                      {isSuperAdmin && (
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => {
+                                setSelectedProduct(product)
+                                setIsEditProductModalOpen(true)
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#4318FF'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(String(product.productid))}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#F56565'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                      {isManager && (
+                        <td style={{ padding: '12px 16px' }}>
+                          <BranchProductStatusSwitch
+                            isAvailable={product.isAvailableAtBranch ?? true}
+                            onClick={() => handleBranchProductStatusToggle(product.productid, product.isAvailableAtBranch ?? true, product.name)}
+                            isLoading={branchProductStatusLoading === String(product.productid)}
+                            disabled={false}
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -447,26 +649,26 @@ export const Products: React.FC = () => {
 
       {/* CATEGORIES TAB */}
       {activeTab === 'categories' && (
-        <Card>
+        <Card style={{ borderRadius: '20px', boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px', padding: '24px' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: '14px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #E0E5F2', backgroundColor: '#F4F7FE' }}>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Tên danh mục</th>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Mô tả</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>
+                  {isSuperAdmin && <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 3 : 2} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Đang tải...
                     </td>
                   </tr>
                 ) : categories.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 3 : 2} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Không tìm thấy danh mục
                     </td>
                   </tr>
@@ -480,44 +682,46 @@ export const Products: React.FC = () => {
                     >
                       <td style={{ padding: '12px 16px', fontWeight: 'bold', color: '#2B3674' }}>{cat.name}</td>
                       <td style={{ padding: '12px 16px', color: '#8F9CB8' }}>{cat.description}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedCategory(cat)
-                              setIsEditCategoryMode(true)
-                              setIsCategoryModalOpen(true)
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#4318FF'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCategory(String(cat.categoryid))}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#F56565'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+                      {isSuperAdmin && (
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => {
+                                setSelectedCategory(cat)
+                                setIsEditCategoryMode(true)
+                                setIsCategoryModalOpen(true)
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#4318FF'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(String(cat.categoryid))}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#F56565'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -529,26 +733,26 @@ export const Products: React.FC = () => {
 
       {/* SIZES TAB */}
       {activeTab === 'sizes' && (
-        <Card>
+        <Card style={{ borderRadius: '20px', boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px', padding: '24px' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: '14px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #E0E5F2', backgroundColor: '#F4F7FE' }}>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Tên kích thước</th>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Giá thêm</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>
+                  {isSuperAdmin && <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 3 : 2} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Đang tải...
                     </td>
                   </tr>
                 ) : sizes.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 3 : 2} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Không tìm thấy kích thước
                     </td>
                   </tr>
@@ -562,44 +766,46 @@ export const Products: React.FC = () => {
                     >
                       <td style={{ padding: '12px 16px', fontWeight: 'bold', color: '#2B3674' }}>{size.name}</td>
                       <td style={{ padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>+{size.additionalprice?.toLocaleString()} VNĐ</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedSize(size)
-                              setIsEditSizeMode(true)
-                              setIsSizeModalOpen(true)
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#4318FF'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSize(String(size.sizeid))}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#F56565'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+                      {isSuperAdmin && (
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => {
+                                setSelectedSize(size)
+                                setIsEditSizeMode(true)
+                                setIsSizeModalOpen(true)
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#4318FF'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSize(String(size.sizeid))}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#F56565'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -611,7 +817,7 @@ export const Products: React.FC = () => {
 
       {/* TOPPINGS TAB */}
       {activeTab === 'toppings' && (
-        <Card>
+        <Card style={{ borderRadius: '20px', boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px', padding: '24px' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', fontSize: '14px' }}>
               <thead>
@@ -620,19 +826,19 @@ export const Products: React.FC = () => {
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Topping</th>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Giá</th>
                   <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Tình trạng</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>
+                  {isSuperAdmin && <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: '600', color: '#2B3674' }}>Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Đang tải...
                     </td>
                   </tr>
                 ) : toppings.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
+                    <td colSpan={isSuperAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '32px 16px', color: '#8F9CB8' }}>
                       Không tìm thấy topping
                     </td>
                   </tr>
@@ -659,46 +865,49 @@ export const Products: React.FC = () => {
                           type="topping"
                           onClick={() => handleToppingStatusToggle(String(topping.toppingid), topping.isavailable)}
                           isLoading={toppingStatusLoading === String(topping.toppingid)}
+                          disabled={!isSuperAdmin}
                         />
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button
-                            onClick={() => {
-                              setSelectedTopping(topping)
-                              setIsEditToppingMode(true)
-                              setIsToppingModalOpen(true)
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#4318FF'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTopping(String(topping.toppingid))}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: 'transparent',
-                              cursor: 'pointer',
-                              color: '#F56565'
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
-                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+                      {isSuperAdmin && (
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => {
+                                setSelectedTopping(topping)
+                                setIsEditToppingMode(true)
+                                setIsToppingModalOpen(true)
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#4318FF'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#EBF3FF')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTopping(String(topping.toppingid))}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: 'transparent',
+                                cursor: 'pointer',
+                                color: '#F56565'
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FED7D7')}
+                              onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

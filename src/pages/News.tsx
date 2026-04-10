@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, Eye, EyeOff, FileText } from 'lucide-react'
+import { Plus, Edit2, Trash2, Eye, EyeOff, FileText, Cloud, X } from 'lucide-react'
 import { newsService } from '@/services/newsService'
 import { News } from '@/types'
 import Toast from '@/components/Toast'
+import { supabase } from '@/utils/supabaseClient'
 
 interface ToastMessage {
   id: string
@@ -39,6 +40,13 @@ export default function NewsPage() {
     status: 'Hiện' as 'Hiện' | 'Ẩn',
   })
 
+  // Image upload state
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
   // ===== Initialize =====
   useEffect(() => {
     loadNews()
@@ -64,6 +72,102 @@ export default function NewsPage() {
       addToast('Lỗi tải bài viết', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ===== Upload to Supabase =====
+  const uploadToSupabase = async (file: File): Promise<string | null> => {
+    // Validate file
+    const allowedFormats = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowedFormats.includes(file.type)) {
+      setUploadError('Chỉ hỗ trợ định dạng .jpg, .png, .webp')
+      return null
+    }
+
+    const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+    if (file.size > MAX_SIZE) {
+      setUploadError('File quá lớn, tối đa 5MB')
+      return null
+    }
+
+    try {
+      setUploading(true)
+      setUploadError(null)
+      setUploadProgress(0)
+
+      // Create file path: news/timestamp_filename
+      const filePath = `news/${Date.now()}_${file.name}`
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('lamtra-media')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        setUploadError('Lỗi upload ảnh: ' + uploadError.message)
+        return null
+      }
+
+      // Get public URL
+      const { data } = supabase.storage.from('lamtra-media').getPublicUrl(filePath)
+      const publicUrl = data.publicUrl
+
+      setUploadProgress(100)
+      return publicUrl
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadError('Lỗi upload ảnh')
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // ===== Handle Image Selection =====
+  const handleImageSelect = async (file: File) => {
+    if (!file) return
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Upload to Supabase
+    const publicUrl = await uploadToSupabase(file)
+    if (publicUrl) {
+      setForm({ ...form, thumbnail: publicUrl })
+      addToast('Upload ảnh thành công', 'success')
+    }
+  }
+
+  // ===== Drag & Drop Handlers =====
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = e.dataTransfer.files
+    if (files && files[0]) {
+      handleImageSelect(files[0])
+    }
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files
+    if (files && files[0]) {
+      handleImageSelect(files[0])
     }
   }
 
@@ -112,6 +216,9 @@ export default function NewsPage() {
         thumbnail: '',
         status: 'Hiện',
       })
+      setImagePreview(null)
+      setUploadError(null)
+      setUploadProgress(0)
     } catch (error) {
       console.error('Error saving news:', error)
       addToast('Lỗi lưu bài viết', 'error')
@@ -343,24 +450,158 @@ export default function NewsPage() {
             </div>
           </div>
 
+          {/* Image Upload - Drag & Drop */}
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
-              Ảnh đại diện (URL):
+              Ảnh đại diện:
             </label>
-            <input
-              type="text"
-              value={form.thumbnail}
-              onChange={e => setForm({ ...form, thumbnail: e.target.value })}
-              placeholder="https://..."
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: `1px solid ${colors.border}`,
-                borderRadius: '8px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-              }}
-            />
+
+            {/* Drag & Drop Zone */}
+            {!form.thumbnail && !imagePreview && (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                style={{
+                  border: `2px dashed ${isDragging ? colors.primary : colors.border}`,
+                  borderRadius: '12px',
+                  padding: '40px 24px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: isDragging ? `${colors.primary}10` : colors.lightBg,
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                <input
+                  type="file"
+                  id="imageInput"
+                  accept=".jpg,.jpeg,.png,.webp"
+                  onChange={handleFileInputChange}
+                  style={{ display: 'none' }}
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor="imageInput"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '12px',
+                    cursor: uploading ? 'not-allowed' : 'pointer',
+                    opacity: uploading ? 0.6 : 1,
+                  }}
+                >
+                  <Cloud size={40} color={isDragging ? colors.primary : colors.textLight} />
+                  <div>
+                    <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: colors.text, fontSize: '14px' }}>
+                      {uploading ? 'Đang xử lý ảnh...' : 'Kéo ảnh vào đây hoặc nhấn để chọn'}
+                    </p>
+                    <p style={{ margin: '0', color: colors.textLight, fontSize: '12px' }}>
+                      Hỗ trợ: .jpg, .png, .webp (Tối đa 5MB)
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
+
+            {/* Progress Bar */}
+            {uploading && uploadProgress > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <p style={{ fontSize: '12px', color: colors.textLight, margin: '0 0 8px 0' }}>
+                  Đang xử lý... {uploadProgress}%
+                </p>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '6px',
+                    background: colors.border,
+                    borderRadius: '3px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      background: colors.primary,
+                      width: `${uploadProgress}%`,
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {uploadError && (
+              <div
+                style={{
+                  padding: '12px',
+                  background: '#FFE8E8',
+                  border: `1px solid ${colors.error}`,
+                  borderRadius: '8px',
+                  color: colors.error,
+                  fontSize: '12px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span>{uploadError}</span>
+                <button
+                  onClick={() => setUploadError(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: colors.error,
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* Image Preview */}
+            {(form.thumbnail || imagePreview) && (
+              <div style={{ position: 'relative', marginTop: '12px' }}>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '200px',
+                    borderRadius: '12px',
+                    background: `url(${imagePreview || form.thumbnail})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    border: `1px solid ${colors.border}`,
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    setForm({ ...form, thumbnail: '' })
+                    setImagePreview(null)
+                    setUploadError(null)
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    border: 'none',
+                    color: 'white',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -381,7 +622,12 @@ export default function NewsPage() {
               {editingNews ? 'Cập nhật' : 'Tạo'}
             </button>
             <button
-              onClick={() => setShowForm(false)}
+              onClick={() => {
+                setShowForm(false)
+                setImagePreview(null)
+                setUploadError(null)
+                setUploadProgress(0)
+              }}
               style={{
                 padding: '10px 20px',
                 background: colors.background,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Menu, X, Bell, User as UserIcon } from 'lucide-react'
 
 interface LayoutProps {
@@ -8,6 +8,7 @@ interface LayoutProps {
   userName?: string
   userRole?: string
   branchName?: string
+  notificationCount?: number
 }
 
 /**
@@ -25,9 +26,9 @@ export const Layout: React.FC<LayoutProps> = ({
   onMenuClick,
   userName = 'User',
   userRole = 'staff',
-  branchName = 'Chi nhánh chính'
+  branchName = 'Chi nhánh chính',
+  notificationCount = 0
 }) => {
-  const [notificationCount] = useState(0)
 
   const getRoleLabel = () => {
     if (!userRole) return 'Người dùng'
@@ -93,10 +94,10 @@ export const Layout: React.FC<LayoutProps> = ({
               <Bell size={20} />
               {notificationCount > 0 && (
                 <span
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full text-white text-xs font-bold flex items-center justify-center"
-                  style={{ backgroundColor: '#4318FF' }}
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse"
+                  style={{ backgroundColor: '#FF4444' }}
                 >
-                  {notificationCount}
+                  {notificationCount > 9 ? '9+' : notificationCount}
                 </span>
               )}
             </button>
@@ -150,7 +151,7 @@ export const Layout: React.FC<LayoutProps> = ({
         className="border-t text-center py-4 text-sm text-gray-600"
         style={{ borderColor: '#E0E5F2' }}
       >
-        <p>© 2024 LAM TRÀ System. All rights reserved.</p>
+        <p>© 2026 LAM TRÀ System. All rights reserved.</p>
       </footer>
     </div>
   )

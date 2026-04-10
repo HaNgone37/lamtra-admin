@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Card } from '@/components/Card'
 import { branchService } from '@/services/branchService'
 import { Branch } from '@/types'
-import { Plus, MapPin, Navigation, X, Search } from 'lucide-react'
+import { Plus, MapPin, Navigation, X, Search, Trash2 } from 'lucide-react'
 
 const StatusBadge = ({ isActive }: { isActive: boolean }) => {
   const bgColor = isActive ? '#E6FFFA' : '#F0F0F0'
@@ -31,7 +31,10 @@ export const Branches: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [selectedBranch, setSelectedBranch] = useState<EditingBranch | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -41,6 +44,8 @@ export const Branches: React.FC = () => {
 
   useEffect(() => {
     loadBranches()
+    const role = localStorage.getItem('userRole')
+    setUserRole(role)
   }, [])
 
   const loadBranches = async () => {
@@ -122,6 +127,29 @@ export const Branches: React.FC = () => {
       console.error('Error toggling branch status:', error)
       alert('Lỗi khi thay đổi trạng thái')
     }
+  }
+
+  const handleDeleteBranch = async () => {
+    if (!selectedBranch) return
+
+    try {
+      setDeleteLoading(true)
+      await branchService.deleteBranch(String(selectedBranch.branchid))
+      await loadBranches()
+      setShowDeleteConfirm(false)
+      setSelectedBranch(null)
+      alert('Xóa chi nhánh thành công!')
+    } catch (error) {
+      console.error('Error deleting branch:', error)
+      alert('Lỗi khi xóa chi nhánh')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const handleOpenDeleteConfirm = (branch: Branch) => {
+    setSelectedBranch(branch)
+    setShowDeleteConfirm(true)
   }
 
   const handleOpenMaps = (address: string) => {
@@ -265,18 +293,36 @@ export const Branches: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-6 px-6">
-                      <button
-                        onClick={() => handleOpenEditModal(branch)}
-                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                        style={{
-                          backgroundColor: '#EBF3FF',
-                          color: '#4318FF'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D1E0FF'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EBF3FF'}
-                      >
-                        Sửa
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEditModal(branch)}
+                          className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                          style={{
+                            backgroundColor: '#EBF3FF',
+                            color: '#4318FF'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D1E0FF'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#EBF3FF'}
+                        >
+                          Sửa
+                        </button>
+                        {userRole?.toLowerCase() === 'super admin' && (
+                          <button
+                            onClick={() => handleOpenDeleteConfirm(branch)}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+                            style={{
+                              backgroundColor: '#FFE5E5',
+                              color: '#E53E3E'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFCCCC'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFE5E5'}
+                            title="Xóa chi nhánh (chỉ Super Admin)"
+                          >
+                            <Trash2 size={16} />
+                            Xóa
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -484,6 +530,60 @@ export const Branches: React.FC = () => {
                 style={{ backgroundColor: '#E0E5F2', color: '#2B3674' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D1DCEF'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E0E5F2'}
+              >
+                Hủy
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedBranch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Xác nhận xóa</h2>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: '#F4F7FE', color: '#2B3674' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p style={{ color: '#8F9CB8', marginBottom: '12px' }}>
+                Bạn có chắc chắn muốn xóa chi nhánh <strong style={{ color: '#2B3674' }}>{selectedBranch.name}</strong> không?
+              </p>
+              <p style={{ color: '#E53E3E', fontSize: '13px', fontWeight: '600' }}>
+                ⚠️ Hành động này không thể hoàn tác. Vui lòng đảm bảo rằng chi nhánh không có dữ liệu quan trọng.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteBranch}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50"
+                style={{
+                  backgroundColor: '#E53E3E',
+                  color: '#FFFFFF'
+                }}
+                onMouseEnter={(e) => !deleteLoading && (e.currentTarget.style.backgroundColor = '#C53030')}
+                onMouseLeave={(e) => !deleteLoading && (e.currentTarget.style.backgroundColor = '#E53E3E')}
+              >
+                {deleteLoading ? 'Đang xóa...' : 'Xóa chi nhánh'}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50"
+                style={{ backgroundColor: '#E0E5F2', color: '#2B3674' }}
+                onMouseEnter={(e) => !deleteLoading && (e.currentTarget.style.backgroundColor = '#D1DCEF')}
+                onMouseLeave={(e) => !deleteLoading && (e.currentTarget.style.backgroundColor = '#E0E5F2')}
               >
                 Hủy
               </button>

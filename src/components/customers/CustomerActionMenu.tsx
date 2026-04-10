@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { MoreVertical, Pencil, Star, Lock, Unlock } from 'lucide-react'
+import { MoreVertical, Pencil, Star } from 'lucide-react'
 
 export interface CustomerForAction {
   customerid: string
   fullname: string
-  isactive?: boolean
 }
 
 interface CustomerActionMenuProps {
@@ -12,7 +11,6 @@ interface CustomerActionMenuProps {
   isSuperAdmin: boolean
   onEdit: (customer: CustomerForAction) => void
   onManagePoints: (customer: CustomerForAction) => void
-  onToggleLock: (customer: CustomerForAction) => void
 }
 
 export default function CustomerActionMenu({
@@ -20,7 +18,6 @@ export default function CustomerActionMenu({
   isSuperAdmin,
   onEdit,
   onManagePoints,
-  onToggleLock,
 }: CustomerActionMenuProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -34,8 +31,6 @@ export default function CustomerActionMenu({
     if (open) document.addEventListener('mousedown', handleOutside)
     return () => document.removeEventListener('mousedown', handleOutside)
   }, [open])
-
-  const isActive = customer.isactive !== false
 
   return (
     <div ref={ref} className="relative inline-block">
@@ -69,32 +64,6 @@ export default function CustomerActionMenu({
               <Star className="w-4 h-4 text-amber-400" />
               Điều chỉnh điểm
             </button>
-          )}
-
-          {/* Lock / Unlock - Super Admin only */}
-          {isSuperAdmin && (
-            <>
-              <div className="my-1 mx-3 border-t border-slate-100" />
-              <button
-                onClick={() => { onToggleLock(customer); setOpen(false) }}
-                className={`w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 flex items-center gap-2.5 transition-colors ${
-                  isActive ? 'text-red-500' : 'text-emerald-600'
-                }`}
-                type="button"
-              >
-                {isActive ? (
-                  <>
-                    <Lock className="w-4 h-4" />
-                    Khóa tài khoản
-                  </>
-                ) : (
-                  <>
-                    <Unlock className="w-4 h-4" />
-                    Mở khóa tài khoản
-                  </>
-                )}
-              </button>
-            </>
           )}
         </div>
       )}

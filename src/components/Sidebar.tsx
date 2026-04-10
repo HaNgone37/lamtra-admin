@@ -44,7 +44,6 @@ interface MenuItem {
  * Sidebar Component - Phân quyền theo RBAC
  * Super Admin: Tất cả menu
  * Branch Manager: Tổng quan, Đơn hàng, Thực đơn, Nhân sự, Kho
- * Staff: Tổng quan, Đơn hàng
  */
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -60,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   // Check if user is Super Admin
   const isSuperAdmin = role.toLowerCase().includes('super')
+  const isManager = role.toLowerCase() === 'branch manager'
 
   // Menu items toàn bộ
   const allMenuItems: MenuItem[] = [
@@ -119,15 +119,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Lọc menu theo role
   const visibleMenu = useMemo(() => {
     if (isSuperAdmin) {
-      // Super Admin xem tất cả
+      // Super Admin: toàn bộ menu
       return allMenuItems
     } else {
-      // Branch Manager và Staff - chỉ xem: Tổng Quan, Đơn Hàng, Thực Đơn, Nhân Sự, Kho, Khách Hàng
-      return allMenuItems.filter(item => 
+      // Branch Manager: ẩn Chi nhánh, Phân tích, Bài Viết, Voucher
+      return allMenuItems.filter(item =>
         ['dashboard', 'orders', 'products', 'employees', 'inventory', 'customers'].includes(item.id)
       )
     }
-  }, [isSuperAdmin])
+  }, [isSuperAdmin, isManager])
 
   const handleNavigate = (pageId: string) => {
     onPageChange(pageId)
@@ -186,7 +186,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+                className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200 ${
                   currentPage === item.id
                     ? 'text-white shadow-lg shadow-blue-200'
                     : 'text-gray-700 hover:bg-gray-50 active:bg-gray-100'
@@ -224,11 +224,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200"
             style={{
-              backgroundColor: '#F4F7FE',
-              color: SIDEBAR_COLORS.text
+              backgroundColor: '#FF4444',
+              color: '#FFFFFF'
             }}
           >
-            <LogOut size={20} strokeWidth={2} style={{ color: SIDEBAR_COLORS.inactive }} />
+            <LogOut size={20} strokeWidth={2} style={{ color: '#FFFFFF' }} />
             <span>Đăng xuất</span>
           </button>
         </div>

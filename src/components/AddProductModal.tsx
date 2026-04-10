@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Loader } from 'lucide-react'
+import { X, Loader, XCircle } from 'lucide-react'
 import { productService, branchProductStatusService } from '@/services/productService'
 import { Category } from '@/types'
 
@@ -24,6 +24,7 @@ export default function AddProductModal({
     subtitle: '',
     description: '',
     baseprice: '',
+    saleprice: '',
     imageurl: '',
     status: 'Đang bán',
     categoryid: ''
@@ -46,6 +47,10 @@ export default function AddProductModal({
       onError('Giá sản phẩm phải là số dương')
       return false
     }
+    if (formData.saleprice !== '' && parseInt(formData.saleprice, 10) >= parseFloat(formData.baseprice)) {
+      onError('Giá khuyến mãi phải nhỏ hơn giá cơ sở')
+      return false
+    }
     if (!formData.categoryid) {
       onError('Vui lòng chọn danh mục')
       return false
@@ -66,6 +71,7 @@ export default function AddProductModal({
         subtitle: formData.subtitle.trim(),
         description: formData.description.trim(),
         baseprice: parseFloat(formData.baseprice),
+        saleprice: formData.saleprice !== '' ? parseInt(formData.saleprice, 10) : null,
         imageurl: formData.imageurl.trim() || 'https://via.placeholder.com/200',
         status: formData.status,
         categoryid: formData.categoryid
@@ -80,6 +86,7 @@ export default function AddProductModal({
         subtitle: '',
         description: '',
         baseprice: '',
+        saleprice: '',
         imageurl: '',
         status: 'Đang bán',
         categoryid: ''
@@ -228,6 +235,49 @@ export default function AddProductModal({
                   boxSizing: 'border-box'
                 }}
               />
+            </div>
+
+            {/* Giá khuyến mãi */}
+            <div>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#2B3674', marginBottom: '8px' }}>
+                Giá khuyến mãi (VNĐ)
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="number"
+                  name="saleprice"
+                  value={formData.saleprice}
+                  onChange={handleInputChange}
+                  placeholder="Để trống nếu không khuyến mãi"
+                  min="0"
+                  step="1000"
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    border: '1px solid #E0E5F2',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, saleprice: '' }))}
+                  title="Xóa giá khuyến mãi"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <XCircle size={20} style={{ color: formData.saleprice !== '' ? '#F56565' : '#CBD5E0' }} />
+                </button>
+              </div>
             </div>
 
             {/* Phụ đề */}

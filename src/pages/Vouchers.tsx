@@ -436,7 +436,6 @@ export default function Vouchers() {
             isLoading={welcomeLoading}
             isSaving={welcomeSaving}
             onToggle={handleToggleWelcome}
-            onSave={() => {}}
           />
         )}
 

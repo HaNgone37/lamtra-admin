@@ -41,7 +41,7 @@
 ### Phân hệ 5: Người dùng & Truyền thông (Users & Media)
 20. **`accounts`:** `accountid` (uuid, PK), `role` (Admin/Manager/Staff), `branchid` (FK, Nullable), `employeeid` (FK).
 21. **`employees`:** `employeeid` (int8, PK), `fullname`, `email`, `phone`, `position`, `branchid` (FK), `created_at`.
-22. **`customers`:** `customerid` (int8, PK), `authid` (uuid), `fullname`, `phone`, `email`, `totalpoints`, `membership`, `birthday`.
+22. **`customers`:** `customerid` (int8, PK), `authid` (uuid), `fullname`, `phone`, `email`, `totalpoints` (int8): Ví điểm khả dụng (SẼ GIẢM khi đổi quà), `accumulated_points` (int8): Tổng điểm đã tích lũy (Dùng để tính hạng, KHÔNG GIẢM khi đổi quà). `membership`, `birthday`.
 23. `news` (Quản lý nội dung/CMS)
 *   `newsid` (int8, PK).
 *   `title` (varchar): Tiêu đề bài viết.

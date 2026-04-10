@@ -24,6 +24,7 @@ export interface Product {
   subtitle: string
   description: string
   baseprice: number
+  saleprice: number | null
   imageurl: string
   status: string
   categoryid: string | number
@@ -58,7 +59,7 @@ export interface Order {
   finalamount: number
   paymentmethod?: string
   ordertype?: string
-  status: 'Chờ' | 'Đang làm' | 'Xong' | 'Hủy' | 'chờ' | 'đang làm' | 'xong' | 'hủy' | string
+  status: 'Chờ xác nhận' | 'Đang làm' | 'Đang giao' | 'Hoàn thành' | 'Hủy' | string
   orderdate: string
   branchid: string | number
   customerid?: string | number | null
@@ -201,10 +202,12 @@ export interface PointHistory {
 
 // Phân hệ 5: Người dùng & Truyền thông (Users & Media)
 export interface Account {
-  accountid: string
-  role: 'admin' | 'manager' | 'staff' | 'super admin' | 'super_admin'
-  branchid?: string | null
+  accountid: string | number
+  role?: 'admin' | 'manager' | 'staff' | 'super admin' | 'super_admin'
+  branchid?: string | number | null
   employeeid?: string | number
+  isactive?: boolean
+  isBanned?: boolean
 }
 
 export interface Employee {
@@ -217,13 +220,6 @@ export interface Employee {
   status?: string
   created_at?: string
   name?: string // alias cho fullname
-}
-
-export interface Account {
-  accountid: string | number
-  employeeid: string | number
-  isactive: boolean
-  isBanned?: boolean
 }
 
 export interface EmployeeWithBranch extends Employee {

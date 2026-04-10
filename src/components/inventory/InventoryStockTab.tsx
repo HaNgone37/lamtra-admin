@@ -60,6 +60,7 @@ interface InventoryStockTabProps {
   branchInventory: BranchInventory[]
   onRestockClick: (ingredientId: string) => void
   onAuditClick: (ingredientId: string, currentStock: number) => void
+  canEdit?: boolean
 }
 
 export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
@@ -69,6 +70,7 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
   branchInventory,
   onRestockClick,
   onAuditClick,
+  canEdit = true,
 }) => {
   const tableHeaderStyle = {
     backgroundColor: colors.background,
@@ -152,46 +154,50 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
                   )}
                 </td>
                 <td style={tableCellStyle}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => onRestockClick(String(item.ingredientid))}
-                      title="Nhập kho"
-                      style={{
-                        padding: '6px 10px',
-                        backgroundColor: colors.primary,
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <Plus size={14} /> Nhập
-                    </button>
-                    <button
-                      onClick={() => onAuditClick(String(item.ingredientid), item.currentstock)}
-                      title="Kiểm kê"
-                      style={{
-                        padding: '6px 10px',
-                        backgroundColor: '#E0E5F2',
-                        color: colors.primary,
-                        border: 'none',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <ClipboardCheck size={14} /> Kiểm
-                    </button>
-                  </div>
+                  {canEdit ? (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => onRestockClick(String(item.ingredientid))}
+                        title="Nhập kho"
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: colors.primary,
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <Plus size={14} /> Nhập
+                      </button>
+                      <button
+                        onClick={() => onAuditClick(String(item.ingredientid), item.currentstock)}
+                        title="Kiểm kê"
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: '#E0E5F2',
+                          color: colors.primary,
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <ClipboardCheck size={14} /> Kiểm
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: '#8F9CB8', fontStyle: 'italic' }}>Chỉ xem</span>
+                  )}
                 </td>
               </tr>
             )

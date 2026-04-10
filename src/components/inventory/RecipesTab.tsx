@@ -24,6 +24,7 @@ interface RecipesTabProps {
   onFormChange: (field: string, value: string) => void
   onAddIngredient: () => void
   availableIngredients: Ingredient[]
+  isSuperAdmin: boolean
 }
 
 export const RecipesTab: React.FC<RecipesTabProps> = ({
@@ -36,6 +37,7 @@ export const RecipesTab: React.FC<RecipesTabProps> = ({
   onFormChange,
   onAddIngredient,
   availableIngredients,
+  isSuperAdmin,
 }) => {
   const tableHeaderStyle = {
     backgroundColor: colors.background,
@@ -92,7 +94,7 @@ export const RecipesTab: React.FC<RecipesTabProps> = ({
                 <tr>
                   <th style={tableHeaderStyle}>Nguyên liệu</th>
                   <th style={tableHeaderStyle}>Định lượng</th>
-                  <th style={tableHeaderStyle}></th>
+                  {isSuperAdmin && <th style={tableHeaderStyle}></th>}
                 </tr>
               </thead>
               <tbody>
@@ -100,101 +102,105 @@ export const RecipesTab: React.FC<RecipesTabProps> = ({
                   <tr key={recipe.recipeid}>
                     <td style={tableCellStyle}>{recipe.ingredient?.name}</td>
                     <td style={tableCellStyle}>{recipe.amount} {recipe.ingredient?.unit}</td>
-                    <td
-                      style={tableCellStyle}
-                      onClick={() => recipe.recipeid && onRemoveRecipe(String(recipe.recipeid))}
-                    >
-                      <button
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: colors.error,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                        }}
+                    {isSuperAdmin && (
+                      <td
+                        style={tableCellStyle}
+                        onClick={() => recipe.recipeid && onRemoveRecipe(String(recipe.recipeid))}
                       >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+                        <button
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: colors.error,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* Add Ingredient Form */}
-          <div
-            style={{
-              backgroundColor: colors.background,
-              padding: '16px',
-              borderRadius: '8px',
-              marginTop: '20px',
-            }}
-          >
-            <h3 style={{ color: colors.text, marginTop: 0, marginBottom: '16px' }}>Thêm nguyên liệu</h3>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
-                Nguyên liệu:
-              </label>
-              <select
-                value={newIngredientForm.ingredientid}
-                onChange={e => onFormChange('ingredientid', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="">-- Chọn nguyên liệu --</option>
-                {availableIngredients.map(ing => (
-                  <option key={ing.ingredientid} value={ing.ingredientid}>
-                    {ing.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
-                Định lượng:
-              </label>
-              <input
-                type="number"
-                value={newIngredientForm.amount}
-                onChange={e => onFormChange('amount', e.target.value)}
-                placeholder="Nhập định lượng"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                }}
-              />
-            </div>
-
-            <button
-              onClick={onAddIngredient}
+          {/* Add Ingredient Form - Only for Super Admin */}
+          {isSuperAdmin && (
+            <div
               style={{
-                width: '100%',
-                padding: '10px',
-                background: colors.primary,
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
+                backgroundColor: colors.background,
+                padding: '16px',
+                borderRadius: '8px',
+                marginTop: '20px',
               }}
             >
-              Thêm
-            </button>
-          </div>
+              <h3 style={{ color: colors.text, marginTop: 0, marginBottom: '16px' }}>Thêm nguyên liệu</h3>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
+                  Nguyên liệu:
+                </label>
+                <select
+                  value={newIngredientForm.ingredientid}
+                  onChange={e => onFormChange('ingredientid', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="">-- Chọn nguyên liệu --</option>
+                  {availableIngredients.map(ing => (
+                    <option key={ing.ingredientid} value={ing.ingredientid}>
+                      {ing.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
+                  Định lượng:
+                </label>
+                <input
+                  type="number"
+                  value={newIngredientForm.amount}
+                  onChange={e => onFormChange('amount', e.target.value)}
+                  placeholder="Nhập định lượng"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={onAddIngredient}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: colors.primary,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
+                Thêm
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -36,7 +36,24 @@ const Employees: React.FC = () => {
   const [userBranchId, setUserBranchId] = useState<number | null>(null)
   const [userBranchName, setUserBranchName] = useState<string>('')
   const [toast, setToast] = useState<ToastMessage | null>(null)
-  const [selectedBranch, setSelectedBranch] = useState<number | null>(null)
+  
+  // Get initial branch ID from localStorage to initialize selectedBranch
+  const getInitialBranchId = (): number | null => {
+    const role = localStorage.getItem('userRole')
+    const branchIdStr = localStorage.getItem('userBranchId')
+    const branchId = branchIdStr ? parseInt(branchIdStr, 10) : null
+    
+    const isSA = role?.toLowerCase() === 'super admin'
+    if (isSA) {
+      return null // Super Admin sees all branches
+    }
+    if (branchId) {
+      return branchId // Branch Manager sees only their branch
+    }
+    return null
+  }
+  
+  const [selectedBranch, setSelectedBranch] = useState<number | null>(getInitialBranchId())
 
   // State: Modal flags
   const [showAddModal, setShowAddModal] = useState(false)
@@ -53,6 +70,7 @@ const Employees: React.FC = () => {
   const [manageLoading, setManageLoading] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
+  // Compute isSuperAdmin based on current userRole state
   const isSuperAdmin = userRole?.toLowerCase() === 'super admin'
 
   // Effects - Initialize user role and branch
@@ -64,17 +82,7 @@ const Employees: React.FC = () => {
     setUserRole(role)
     setUserBranchId(branchId)
     
-    // Auto-set selectedBranch immediately for Branch Manager
-    const isSA = role?.toLowerCase() === 'super admin'
-    if (!isSA && branchId) {
-      setSelectedBranch(branchId)
-      console.log('[RBAC] Branch Manager detected - setting selectedBranch to:', branchId)
-    } else if (isSA) {
-      setSelectedBranch(null)
-      console.log('[RBAC] Super Admin detected - showing all branches')
-    }
-    
-    console.log('[RBAC] Initialized - User Role:', role, 'Branch ID:', branchId, 'Is Super Admin:', isSA)
+    console.log('[RBAC] Initialized - User Role:', role, 'Branch ID:', branchId)
   }, [])
 
   useEffect(() => {
@@ -84,11 +92,13 @@ const Employees: React.FC = () => {
         setBranches(data)
         
         // Set branch name for Branch Manager
-        if (userBranchId && !isSuperAdmin) {
-          const branch = data.find(b => b.branchid === userBranchId)
+        if (selectedBranch && !isSuperAdmin) {
+          const branch = data.find(b => b.branchid === selectedBranch)
           if (branch) {
             setUserBranchName(branch.name)
             console.log('[RBAC] Found branch name:', branch.name)
+          } else {
+            console.warn('[RBAC] Branch not found for ID:', selectedBranch)
           }
         }
       } catch (err) {
@@ -96,16 +106,16 @@ const Employees: React.FC = () => {
       }
     }
     
-    if (userBranchId !== null || isSuperAdmin) {
-      loadBranches()
-    }
-  }, [userBranchId, isSuperAdmin])
+    loadBranches()
+  }, [selectedBranch, isSuperAdmin])
 
-  // Trigger data load when selectedBranch changes
+  // Trigger data load when selectedBranch changes or on mount
   useEffect(() => {
-    console.log('[RBAC] selectedBranch changed to:', selectedBranch)
-    loadEmployeesAndStats()
-  }, [selectedBranch])
+    if (selectedBranch !== null || isSuperAdmin) {
+      console.log('[RBAC] Loading data for selectedBranch:', selectedBranch)
+      loadEmployeesAndStats()
+    }
+  }, [selectedBranch, userRole])
 
   // Functions
   const loadEmployeesAndStats = async () => {
@@ -255,7 +265,9 @@ const Employees: React.FC = () => {
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Quản Lý Nhân Viên</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          {isSuperAdmin ? 'Quản Lý Nhân Viên' : `Nhân Viên Chi Nhánh: ${userBranchName}`}
+        </h1>
         <p className="text-gray-600">Quản lý thông tin và tài khoản đăng nhập của nhân viên</p>
       </div>
 
