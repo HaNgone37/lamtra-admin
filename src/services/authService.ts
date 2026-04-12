@@ -29,8 +29,8 @@ export const authService = {
         }
 
         // Save role and branchid to localStorage
-        localStorage.setItem('userRole', user.role)
-        localStorage.setItem('userBranchId', user.branchid || '')
+        localStorage.setItem('userRole', user.role || '')
+        localStorage.setItem('userBranchId', String(user.branchid || ''))
 
         return user
       }

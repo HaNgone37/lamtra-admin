@@ -99,14 +99,15 @@ export const VouchersStatsTab: React.FC<VouchersStatsTabProps> = ({ stats, isLoa
           }}>
             <thead>
               <tr style={{ backgroundColor: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: COLORS.text }}>Mã</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: COLORS.text }}>Tên Voucher</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Giảm Giá</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Đã Phát</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Đã Dùng</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Tỷ Lệ</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Loại Chương Trình</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Tình Trạng Hạn</th>
+                <th style={{ padding: '16px 18px', textAlign: 'left', fontWeight: '600', color: COLORS.text }}>Mã</th>
+                <th style={{ padding: '16px 18px', textAlign: 'left', fontWeight: '600', color: COLORS.text }}>Tên Voucher</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Giảm Giá</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Phạm Vi</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Đã Phát</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Đã Dùng</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Tỷ Lệ</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Loại Chương Trình</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Tình Trạng Hạn</th>
               </tr>
             </thead>
             <tbody>
@@ -130,25 +131,39 @@ export const VouchersStatsTab: React.FC<VouchersStatsTabProps> = ({ stats, isLoa
 
                 return (
                   <tr key={stat.voucherid} style={{ borderBottom: `1px solid ${COLORS.border}` }}>
-                    <td style={{ padding: '12px 16px', color: COLORS.text, fontWeight: '600' }}>
+                    <td style={{ padding: '16px 18px', color: COLORS.text, fontWeight: '600' }}>
                       {stat.code}
                     </td>
-                    <td style={{ padding: '12px 16px', color: COLORS.text }}>
+                    <td style={{ padding: '16px 18px', color: COLORS.text }}>
                       {stat.title}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: COLORS.text }}>
+                    <td style={{ padding: '16px 18px', textAlign: 'center', color: COLORS.text }}>
                       {stat.discountvalue} {stat.discounttype}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: COLORS.text, fontWeight: '600' }}>
+                    <td style={{ padding: '16px 18px', textAlign: 'center' }}>
+                      <div style={{
+                        display: 'inline-block',
+                        padding: '8px 16px',
+                        borderRadius: '12px',
+                        backgroundColor: stat.scope === 'Toàn chuỗi' ? '#E3F2FD' : '#F3E5F5',
+                        color: stat.scope === 'Toàn chuỗi' ? '#1976D2' : '#7B1FA2',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        fontFamily: '"Be Vietnam Pro", sans-serif'
+                      }}>
+                        {stat.scope === 'Toàn chuỗi' ? 'Công khai' : 'Cá nhân'}
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 18px', textAlign: 'center', color: COLORS.text, fontWeight: '600' }}>
                       {stat.issuedCount}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: COLORS.text, fontWeight: '600' }}>
+                    <td style={{ padding: '16px 18px', textAlign: 'center', color: COLORS.text, fontWeight: '600' }}>
                       {stat.usedCount}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: COLORS.success, fontWeight: '600' }}>
+                    <td style={{ padding: '16px 18px', textAlign: 'center', color: COLORS.success, fontWeight: '600' }}>
                       {stat.usageRate}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 18px', textAlign: 'center' }}>
                       <div style={{
                         display: 'inline-block',
                         padding: '6px 12px',
@@ -161,7 +176,7 @@ export const VouchersStatsTab: React.FC<VouchersStatsTabProps> = ({ stats, isLoa
                         {programType}
                       </div>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <td style={{ padding: '16px 18px', textAlign: 'center' }}>
                       <div style={{
                         display: 'inline-block',
                         padding: '6px 12px',

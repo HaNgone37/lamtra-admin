@@ -128,7 +128,6 @@ export const Orders: React.FC = () => {
   const userBranchIdStr = localStorage.getItem('userBranchId') || ''
   const userBranchId = userBranchIdStr ? Number(userBranchIdStr) : null
   const isSuperAdmin = role.toLowerCase().includes('super')
-  const _isManager = role.toLowerCase() === 'manager'
 
   // Filter states
   const [selectedBranch, setSelectedBranch] = useState<string>('all')

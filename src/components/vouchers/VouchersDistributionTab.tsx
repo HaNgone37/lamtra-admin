@@ -210,6 +210,45 @@ export const VouchersDistributionTab: React.FC<VouchersDistributionTabProps> = (
           </div>
         </div>
 
+        {/* Preview Summary */}
+        {selectedVoucher && selectedCustomers.size > 0 && (
+          <div style={{
+            backgroundColor: COLORS.successBg,
+            borderRadius: '16px',
+            border: `2px solid ${COLORS.success}`,
+            padding: '16px',
+            marginBottom: '20px',
+          }}>
+            {(() => {
+              const voucher = stats.find(s => s.voucherid === selectedVoucher)
+              if (!voucher) return null
+              
+              // Tính tổng giá trị dự kiến
+              let totalEstimatedValue = 0
+              if (voucher.discounttype === '%') {
+                // Ước tính dựa trên khách hàng
+                totalEstimatedValue = selectedCustomers.size * (voucher.minordervalue || 500000) * (voucher.discountvalue / 100)
+              } else {
+                totalEstimatedValue = selectedCustomers.size * voucher.discountvalue
+              }
+
+              return (
+                <div style={{ color: COLORS.success, fontSize: '14px', fontWeight: '500' }}>
+                  <p style={{ margin: '0 0 8px 0' }}>
+                    📋 <strong>Bạn chuẩn bị tặng:</strong> <strong>{voucher.code}</strong> - {voucher.title}
+                  </p>
+                  <p style={{ margin: '0 0 8px 0' }}>
+                    👥 <strong>Cho {selectedCustomers.size} khách hàng</strong>
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    💰 <strong>Tổng giá trị dự kiến: {totalEstimatedValue.toLocaleString()}đ</strong>
+                  </p>
+                </div>
+              )
+            })()}
+          </div>
+        )}
+
         {/* Customer Preview Table */}
         <div style={{
           backgroundColor: COLORS.card,

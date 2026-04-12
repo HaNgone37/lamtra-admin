@@ -14,13 +14,22 @@ const colors = {
   background: '#F3F4F6',
 }
 
+interface Size {
+  sizeid: number | string
+  name: string
+  additionalprice: number
+}
+
 interface RecipesTabProps {
   products: Product[]
+  sizes: Size[]
   selectedProduct: string
+  selectedSize: string
   onProductChange: (productId: string) => void
+  onSizeChange: (sizeId: string) => void
   recipes: Recipe[]
   onRemoveRecipe: (recipeId: string) => void
-  newIngredientForm: { ingredientid: string; amount: string }
+  newIngredientForm: { ingredientid: string; amount: string; sizeid: string }
   onFormChange: (field: string, value: string) => void
   onAddIngredient: () => void
   availableIngredients: Ingredient[]
@@ -29,8 +38,11 @@ interface RecipesTabProps {
 
 export const RecipesTab: React.FC<RecipesTabProps> = ({
   products,
+  sizes,
   selectedProduct,
+  selectedSize,
   onProductChange,
+  onSizeChange,
   recipes,
   onRemoveRecipe,
   newIngredientForm,
@@ -55,6 +67,9 @@ export const RecipesTab: React.FC<RecipesTabProps> = ({
     color: colors.text,
     fontSize: '14px',
   }
+
+  // All recipes fetched are already filtered by selectedSize, so recipesForSize = recipes
+  const recipesForSize = recipes
 
   return (
     <div style={{ marginTop: '20px' }}>
@@ -86,9 +101,45 @@ export const RecipesTab: React.FC<RecipesTabProps> = ({
 
       {selectedProduct && (
         <>
+          {/* Size Selector - Show all available sizes */}
+          {sizes.length > 0 && (
+            <div style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: `1px solid ${colors.border}` }}>
+              <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600', color: colors.text }}>
+                Chọn Size:
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {sizes.map((size: Size) => (
+                  <button
+                    key={size.sizeid}
+                    onClick={() => {
+                      const sizeKey = String(size.sizeid)
+                      console.log('[RecipesTab] Size button clicked:', sizeKey, 'sizeName:', size.name)
+                      onSizeChange(sizeKey)
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: selectedSize === String(size.sizeid) ? 'none' : `2px solid ${colors.border}`,
+                      backgroundColor: selectedSize === String(size.sizeid) ? colors.primary : '#fff',
+                      color: selectedSize === String(size.sizeid) ? '#fff' : colors.text,
+                      fontWeight: '600',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {size.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Recipes Table */}
           <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ color: colors.text, marginBottom: '12px' }}>Công thức hiện có</h3>
+            <h3 style={{ color: colors.text, marginBottom: '12px' }}>
+              Công thức hiện có ({sizes.find(s => String(s.sizeid) === selectedSize)?.name || 'Chưa chọn'})
+            </h3>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -98,32 +149,40 @@ export const RecipesTab: React.FC<RecipesTabProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {recipes.map(recipe => (
-                  <tr key={recipe.recipeid}>
-                    <td style={tableCellStyle}>{recipe.ingredient?.name}</td>
-                    <td style={tableCellStyle}>{recipe.amount} {recipe.ingredient?.unit}</td>
-                    {isSuperAdmin && (
-                      <td
-                        style={tableCellStyle}
-                        onClick={() => recipe.recipeid && onRemoveRecipe(String(recipe.recipeid))}
-                      >
-                        <button
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: colors.error,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
+                {recipesForSize.length > 0 ? (
+                  recipesForSize.map((recipe: Recipe) => (
+                    <tr key={recipe.recipeid}>
+                      <td style={tableCellStyle}>{recipe.ingredient?.name}</td>
+                      <td style={tableCellStyle}>{recipe.amount} {recipe.ingredient?.unit}</td>
+                      {isSuperAdmin && (
+                        <td
+                          style={tableCellStyle}
+                          onClick={() => recipe.recipeid && onRemoveRecipe(String(recipe.recipeid))}
                         >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    )}
+                          <button
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: colors.error,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={isSuperAdmin ? 3 : 2} style={{ ...tableCellStyle, textAlign: 'center', color: colors.textLight }}>
+                      Không có công thức cho size này
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -140,29 +199,56 @@ export const RecipesTab: React.FC<RecipesTabProps> = ({
             >
               <h3 style={{ color: colors.text, marginTop: 0, marginBottom: '16px' }}>Thêm nguyên liệu</h3>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
-                  Nguyên liệu:
-                </label>
-                <select
-                  value={newIngredientForm.ingredientid}
-                  onChange={e => onFormChange('ingredientid', e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="">-- Chọn nguyên liệu --</option>
-                  {availableIngredients.map(ing => (
-                    <option key={ing.ingredientid} value={ing.ingredientid}>
-                      {ing.name}
-                    </option>
-                  ))}
-                </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
+                    Size:
+                  </label>
+                  <select
+                    value={newIngredientForm.sizeid}
+                    onChange={e => onFormChange('sizeid', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">-- Tất cả Size --</option>
+                    {sizes.map(size => (
+                      <option key={size.sizeid} value={size.sizeid}>
+                        {size.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: colors.text }}>
+                    Nguyên liệu:
+                  </label>
+                  <select
+                    value={newIngredientForm.ingredientid}
+                    onChange={e => onFormChange('ingredientid', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">-- Chọn nguyên liệu --</option>
+                    {availableIngredients.map(ing => (
+                      <option key={ing.ingredientid} value={ing.ingredientid}>
+                        {ing.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div style={{ marginBottom: '20px' }}>

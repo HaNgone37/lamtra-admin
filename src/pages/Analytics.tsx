@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BarChart3, Heart, TrendingUp, Users, Sparkles } from 'lucide-react'
+import { BarChart3, Heart, TrendingUp, Sparkles, Crown, Zap } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Review } from '@/types'
 import Toast from '@/components/Toast'
@@ -10,14 +10,12 @@ interface ToastMessage {
   type: 'success' | 'error'
 }
 
-interface TopCustomer {
-  customerid: string
+interface LoyalCustomer {
+  customerid: number
   fullname: string
-  phone: string
-  email: string
-  ordercount: number
-  totalspent: number
-  lastorderdate: string
+  membership: string
+  accumulated_points: number
+  totalpoints: number
 }
 
 interface RevenueData {
@@ -49,6 +47,20 @@ const chartColors = {
   neutral: '#FEC90F',
 }
 
+const MEMBERSHIP_COLORS = {
+  'Vàng': '#FFD700',
+  'Bạc': '#C0C0C0',
+  'Đồng': '#CD7F32',
+}
+
+const MEMBERSHIP_TEXT_COLORS = {
+  'Vàng': '#8B6914',
+  'Bạc': '#505050',
+  'Đồng': '#5F3410',
+}
+
+const MEMBERSHIP_ORDER = ['Vàng', 'Bạc', 'Đồng']
+
 export default function AnalyticsPage() {
   // ===== Auth - Read from localStorage =====
   const userRole = (localStorage.getItem('userRole') || 'staff').toLowerCase()
@@ -68,8 +80,14 @@ export default function AnalyticsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [aiInsight, setAiInsight] = useState('')
 
-  // Customers tab
-  const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([])
+  // Loyal Customers tab
+  const [loyalCustomers, setLoyalCustomers] = useState<LoyalCustomer[]>([])
+  const [loyalStats, setLoyalStats] = useState({
+    total: 0,
+    totalCirculatingPoints: 0,
+    membershipCounts: { 'Vàng': 0, 'Bạc': 0, 'Đồng': 0 },
+    premiumRate: 0,
+  })
 
   // ===== Initialize =====
   useEffect(() => {
@@ -78,7 +96,7 @@ export default function AnalyticsPage() {
     } else if (activeTab === 'sentiment') {
       loadSentimentData()
     } else if (activeTab === 'customers') {
-      loadTopCustomers()
+      loadLoyalCustomers()
     }
   }, [activeTab])
 
@@ -168,75 +186,48 @@ export default function AnalyticsPage() {
     }
   }
 
-  // ===== Load Top Customers =====
-  const loadTopCustomers = async () => {
+  // ===== Load Top Customers (renamed to Loyal Customers) =====
+  const loadLoyalCustomers = async () => {
     try {
       setLoading(true)
       const { supabase } = await import('@/utils/supabaseClient')
 
-      let ordersQuery = supabase
-        .from('orders')
-        .select('customerid, totalamount, orderdate')
-
-      // Add branch filter for managers
-      if (!isSuperAdmin && userBranchId) {
-        ordersQuery = ordersQuery.eq('branchid', userBranchId)
-      }
-
-      const { data: ordersData, error: ordersError } = await ordersQuery
-      if (ordersError) throw ordersError
-
-      // Get unique customer IDs
-      const customerIds = [...new Set(ordersData?.map((o: any) => o.customerid) || [])]
-
-      if (customerIds.length === 0) {
-        setTopCustomers([])
-        setLoading(false)
-        return
-      }
-
-      // Get customer details
-      const { data: customersData, error: customersError } = await supabase
+      let query = supabase
         .from('customers')
-        .select('customerid, fullname, phone, email')
-        .in('customerid', customerIds)
+        .select('customerid, fullname, membership, accumulated_points, totalpoints')
+        .order('accumulated_points', { ascending: false })
 
-      if (customersError) throw customersError
+      // Add branch filter for managers (if applicable - customers table may not have branchid)
+      // For now, fetch all customers for Super Admin
 
-      // Aggregate order data per customer
-      const customerStats: { [key: string]: any } = {}
-      customersData?.forEach((customer: any) => {
-        customerStats[customer.customerid] = {
-          customerid: customer.customerid,
-          fullname: customer.fullname,
-          phone: customer.phone,
-          email: customer.email,
-          ordercount: 0,
-          totalspent: 0,
-          lastorderdate: '',
-        }
+      const { data, error } = await query
+      if (error) throw error
+
+      setLoyalCustomers((data as LoyalCustomer[]) || [])
+
+      // Calculate stats
+      const customers = (data as LoyalCustomer[]) || []
+      const total = customers.length
+      const totalCirculatingPoints = customers.reduce((sum, c) => sum + (c.totalpoints || 0), 0)
+
+      const membershipCounts = {
+        'Vàng': customers.filter((c) => c.membership === 'Vàng').length,
+        'Bạc': customers.filter((c) => c.membership === 'Bạc').length,
+        'Đồng': customers.filter((c) => c.membership === 'Đồng').length,
+      }
+
+      const premiumCount = membershipCounts['Vàng'] + membershipCounts['Bạc']
+      const premiumRate = total > 0 ? ((premiumCount / total) * 100) : 0
+
+      setLoyalStats({
+        total,
+        totalCirculatingPoints,
+        membershipCounts,
+        premiumRate,
       })
-
-      ordersData?.forEach((order: any) => {
-        if (customerStats[order.customerid]) {
-          customerStats[order.customerid].ordercount++
-          customerStats[order.customerid].totalspent += order.totalamount
-          const orderDate = new Date(order.orderdate).getTime()
-          const lastDate = new Date(customerStats[order.customerid].lastorderdate || 0).getTime()
-          if (orderDate > lastDate) {
-            customerStats[order.customerid].lastorderdate = order.orderdate
-          }
-        }
-      })
-
-      const topList = Object.values(customerStats)
-        .sort((a, b) => b.ordercount - a.ordercount)
-        .slice(0, 10)
-
-      setTopCustomers(topList)
     } catch (error) {
-      console.error('Error loading top customers:', error)
-      addToast('Lỗi tải danh sách khách hàng', 'error')
+      console.error('[LOYAL_CUSTOMERS] Error loading:', error)
+      addToast('Lỗi tải dữ liệu khách hàng thân thiết', 'error')
     } finally {
       setLoading(false)
     }
@@ -325,7 +316,7 @@ export default function AnalyticsPage() {
             fontSize: '14px',
           }}
         >
-          <Users size={20} />
+          <Crown size={20} />
           Khách hàng thân thiết
         </button>
       </div>
@@ -590,61 +581,262 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Customers Tab - Top Loyal Customers */}
+      {/* Customers Tab - Loyal Customers */}
       {activeTab === 'customers' && (
         <div>
+          {/* Stats Cards */}
           <div style={{
-            background: 'white',
-            borderRadius: '20px',
-            border: `1px solid ${colors.border}`,
-            boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px',
-            padding: '24px',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: '16px',
+            marginBottom: '24px',
           }}>
-            <h3 style={{ color: colors.text, fontSize: '18px', fontWeight: '600', margin: '0 0 24px 0' }}>
-              🌟 Top Khách Hàng Thân Thiết
-            </h3>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-                ⏳ Đang tải...
+            {/* Card 1: Circulating Points */}
+            <div style={{
+              background: 'linear-gradient(135deg, #E3F2FD 0%, #E0F2FE 100%)',
+              borderRadius: '20px',
+              border: '1px solid #90CAF9',
+              boxShadow: 'rgba(13, 110, 253, 0.1) 0px 4px 12px',
+              padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ color: colors.textLight, fontSize: '12px', margin: '0 0 8px 0' }}>
+                    Điểm đang lưu thông
+                  </p>
+                  <p style={{ color: colors.primary, fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                    {loyalStats.totalCirculatingPoints.toLocaleString('vi-VN')}
+                  </p>
+                  <p style={{ color: colors.textLight, fontSize: '11px', marginTop: '6px' }}>
+                    Điểm chưa đổi quà
+                  </p>
+                </div>
+                <div style={{
+                  background: '#BBDEFB',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Zap size={24} style={{ color: colors.primary }} />
+                </div>
               </div>
-            ) : topCustomers.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: colors.background, borderBottom: `2px solid ${colors.border}` }}>
-                      <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>STT</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Tên khách hàng</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Điện thoại</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Email</th>
-                      <th style={{ padding: '12px', textAlign: 'center', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Số đơn</th>
-                      <th style={{ padding: '12px', textAlign: 'right', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Chi tiêu (đ)</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: colors.text, fontWeight: '600', fontSize: '14px' }}>Đơn cuối</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topCustomers.map((customer, idx) => (
-                      <tr key={customer.customerid} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                        <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>{idx + 1}</td>
-                        <td style={{ padding: '12px', color: colors.text, fontSize: '14px', fontWeight: '600' }}>{customer.fullname}</td>
-                        <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>{customer.phone}</td>
-                        <td style={{ padding: '12px', color: colors.textLight, fontSize: '13px' }}>{customer.email}</td>
-                        <td style={{ padding: '12px', textAlign: 'center', color: colors.primary, fontWeight: '600', fontSize: '14px' }}>{customer.ordercount}</td>
-                        <td style={{ padding: '12px', textAlign: 'right', color: colors.primary, fontWeight: '600', fontSize: '14px' }}>
-                          {customer.totalspent.toLocaleString('vi-VN')}
-                        </td>
-                        <td style={{ padding: '12px', color: colors.textLight, fontSize: '13px' }}>
-                          {customer.lastorderdate ? new Date(customer.lastorderdate).toLocaleDateString('vi-VN') : '-'}
-                        </td>
-                      </tr>
+            </div>
+
+            {/* Card 2: Premium Rate */}
+            <div style={{
+              background: 'linear-gradient(135deg, #F3E5F5 0%, #FCE4EC 100%)',
+              borderRadius: '20px',
+              border: '1px solid #CE93D8',
+              boxShadow: 'rgba(156, 39, 176, 0.1) 0px 4px 12px',
+              padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between' }}>
+                <div>
+                  <p style={{ color: colors.textLight, fontSize: '12px', margin: '0 0 8px 0' }}>
+                    Tỷ lệ lên hạng
+                  </p>
+                  <p style={{ color: '#9C27B0', fontSize: '28px', fontWeight: '700', margin: 0 }}>
+                    {loyalStats.premiumRate.toFixed(1)}%
+                  </p>
+                  <p style={{ color: colors.textLight, fontSize: '11px', marginTop: '6px' }}>
+                    {loyalStats.membershipCounts['Vàng'] + loyalStats.membershipCounts['Bạc']}/
+                    {loyalStats.total} khách
+                  </p>
+                </div>
+                <div style={{
+                  background: '#F8BBD0',
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Crown size={24} style={{ color: '#9C27B0' }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2-Column Layout for Chart and Leaderboard */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+            gap: '24px',
+          }}>
+            {/* Left: Membership Distribution PieChart */}
+            <div style={{
+              background: 'white',
+              borderRadius: '20px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px',
+              padding: '24px',
+            }}>
+              <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: '600', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TrendingUp size={18} style={{ color: colors.primary }} />
+                Cơ cấu hạng thành viên
+              </h3>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: colors.textLight }}>
+                  ⏳ Đang tải...
+                </div>
+              ) : loyalStats.total > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={MEMBERSHIP_ORDER.map(m => ({
+                          name: m,
+                          value: loyalStats.membershipCounts[m as keyof typeof MEMBERSHIP_COLORS],
+                        })).filter(x => x.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {MEMBERSHIP_ORDER.map(m => (
+                          <Cell
+                            key={`cell-${m}`}
+                            fill={MEMBERSHIP_COLORS[m as keyof typeof MEMBERSHIP_COLORS]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {MEMBERSHIP_ORDER.map(m => (
+                      loyalStats.membershipCounts[m as keyof typeof MEMBERSHIP_COLORS] > 0 && (
+                        <div key={m} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div
+                              style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                background: MEMBERSHIP_COLORS[m as keyof typeof MEMBERSHIP_COLORS],
+                              }}
+                            />
+                            <span style={{ color: colors.text, fontWeight: '500' }}>{m}</span>
+                          </div>
+                          <span style={{ color: colors.textLight }}>
+                            {loyalStats.membershipCounts[m as keyof typeof MEMBERSHIP_COLORS]} (
+                            {((loyalStats.membershipCounts[m as keyof typeof MEMBERSHIP_COLORS] / loyalStats.total) * 100).toFixed(1)}%)
+                          </span>
+                        </div>
+                      )
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-                Không có dữ liệu khách hàng
-              </div>
-            )}
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: colors.textLight }}>
+                  Không có dữ liệu hạng thành viên
+                </div>
+              )}
+            </div>
+
+            {/* Right: Top 5 Loyal Customers Leaderboard */}
+            <div style={{
+              background: 'white',
+              borderRadius: '20px',
+              border: `1px solid ${colors.border}`,
+              boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px',
+              padding: '24px',
+            }}>
+              <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: '600', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Crown size={18} style={{ color: '#FFC107' }} />
+                Xếp hạng Top 5
+              </h3>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: colors.textLight }}>
+                  ⏳ Đang tải...
+                </div>
+              ) : loyalCustomers.slice(0, 5).length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {loyalCustomers.slice(0, 5).map((customer, idx) => (
+                    <div
+                      key={customer.customerid}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        background: colors.lightBg,
+                        border: `1px solid ${colors.border}`,
+                      }}
+                    >
+                      {/* Rank Badge */}
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                          fontWeight: '700',
+                          fontSize: '14px',
+                          background:
+                            idx === 0
+                              ? 'linear-gradient(135deg, #FFB300, #FF8C00)'
+                              : idx === 1
+                              ? 'linear-gradient(135deg, #C0C0C0, #808080)'
+                              : idx === 2
+                              ? 'linear-gradient(135deg, #CD7F32, #8B4513)'
+                              : '#999',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {idx + 1}
+                      </div>
+
+                      {/* Customer Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, color: colors.text, fontWeight: '600', fontSize: '13px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {customer.fullname}
+                        </p>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            marginTop: '4px',
+                            background: MEMBERSHIP_COLORS[customer.membership as keyof typeof MEMBERSHIP_COLORS] || '#999',
+                            color: MEMBERSHIP_TEXT_COLORS[customer.membership as keyof typeof MEMBERSHIP_TEXT_COLORS] || '#fff',
+                          }}
+                        >
+                          {customer.membership}
+                        </span>
+                      </div>
+
+                      {/* Points */}
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <p style={{ margin: 0, color: colors.primary, fontWeight: '700', fontSize: '14px' }}>
+                          {customer.accumulated_points.toLocaleString('vi-VN')}
+                        </p>
+                        <p style={{ margin: '2px 0 0 0', color: colors.textLight, fontSize: '11px' }}>
+                          điểm
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '60px 20px', color: colors.textLight }}>
+                  Không có khách hàng
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

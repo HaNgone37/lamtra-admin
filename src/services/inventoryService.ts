@@ -301,30 +301,43 @@ export const recipeService = {
    * Lấy công thức của sản phẩm cụ thể
    * ✅ Sử dụng cột 'amount'
    */
-  async getRecipesByProduct(productId: string): Promise<Recipe[]> {
+  async getRecipesByProduct(productId: string, sizeId?: number | string): Promise<Recipe[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('recipes')
         .select(`
           recipeid,
           productid,
+          sizeid,
           ingredientid,
           amount,
           products(productid, name),
-          ingredients(ingredientid, name, unit, baseprice)
+          ingredients(ingredientid, name, unit, baseprice),
+          sizes(sizeid, name)
         `)
         .eq('productid', productId)
-        .order('ingredientid', { ascending: true })
+
+      // Add size filter if sizeId is provided
+      if (sizeId !== undefined && sizeId !== null && sizeId !== 'all') {
+        query = query.eq('sizeid', sizeId)
+        console.log('[RecipeService] Filtering by sizeid:', sizeId)
+      }
+
+      const { data, error } = await query.order('ingredientid', { ascending: true })
 
       if (error) throw error
+      
+      console.log('[RecipeService] Fetched recipes count:', data?.length, 'for productId:', productId, 'sizeId:', sizeId)
       
       return (data || []).map(item => ({
         recipeid: item.recipeid,
         productid: item.productid,
+        sizeid: item.sizeid,
         ingredientid: item.ingredientid,
         amount: item.amount,
         product: item.products as any,
         ingredient: item.ingredients as unknown as Ingredient,
+        sizes: item.sizes as any,
       }))
     } catch (error) {
       console.error('❌ Error fetching recipes by product:', error)

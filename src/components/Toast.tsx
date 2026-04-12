@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 interface ToastProps {
   message: string
@@ -7,7 +7,7 @@ interface ToastProps {
   duration?: number
 }
 
-export default function Toast({ message, type, onClose, duration = 3000 }: ToastProps) {
+export const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 3000 }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, duration)
     return () => clearTimeout(timer)
@@ -50,3 +50,5 @@ export default function Toast({ message, type, onClose, duration = 3000 }: Toast
     </div>
   )
 }
+
+export default Toast

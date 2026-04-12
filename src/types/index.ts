@@ -153,6 +153,7 @@ export interface Voucher {
   maxdiscount?: number
   minordervalue?: number
   discounttype: '%' | 'Tiền mặt' | 'percentage' | 'fixed'
+  scope: 'Toàn chuỗi' | 'Cá nhân' | string // Phân loại: Công khai vs Cá nhân
   expirydate: string
   iswelcome: boolean
   pointsrequired: number
@@ -179,6 +180,7 @@ export interface VoucherStatistic {
   discountvalue?: number
   discount?: number
   discounttype: string
+  scope: 'Toàn chuỗi' | 'Cá nhân' | string  // Thêm scope
   expirydate: string
   issuedCount?: number
   totalIssued?: number

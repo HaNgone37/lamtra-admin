@@ -53,8 +53,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('user', JSON.stringify(userData))
         
         // Save RBAC keys
-        localStorage.setItem('userRole', userData.role)
-        localStorage.setItem('userBranchId', userData.branchid || '')
+        localStorage.setItem('userRole', userData.role || '')
+        localStorage.setItem('userBranchId', String(userData.branchid || ''))
       } else {
         // Clear stored user if session is invalid
         localStorage.removeItem('user')
@@ -103,8 +103,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('user', JSON.stringify(userData))
         
         // CRITICAL: Save role and branchid for RBAC in Sidebar and pages
-        localStorage.setItem('userRole', userData.role)
-        localStorage.setItem('userBranchId', userData.branchid || '')
+        localStorage.setItem('userRole', userData.role || '')
+        localStorage.setItem('userBranchId', String(userData.branchid || ''))
       }
     } catch (error) {
       console.error('Error logging in:', error)

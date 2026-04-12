@@ -101,6 +101,39 @@ export default function Vouchers() {
     }
   }
 
+  // Smart reason handler with auto-filtering
+  const handleReasonChange = (reason: string) => {
+    setSelectedReason(reason)
+    
+    // If "Sinh nhật" is selected, auto-filter and select birthday customers
+    if (reason === 'Sinh nhật') {
+      const currentMonth = new Date().getMonth() + 1 // 1-12
+      const birthdayCustomers = customers.filter(c => {
+        if (!c.birthday) return false
+        const customerMonth = new Date(c.birthday).getMonth() + 1
+        return customerMonth === currentMonth
+      })
+      
+      if (birthdayCustomers.length > 0) {
+        const newSelected = new Set(birthdayCustomers.map(c => Number(c.customerid)))
+        setSelectedCustomers(newSelected)
+        setToast({ 
+          message: `✅ Tự động chọn ${birthdayCustomers.length} khách sinh nhật tháng này`, 
+          type: 'success' 
+        })
+      } else {
+        setSelectedCustomers(new Set())
+        setToast({ 
+          message: '❌ Không có khách hàng nào sinh nhật tháng này', 
+          type: 'error' 
+        })
+      }
+    } else {
+      // For other reasons, clear selection to let user choose
+      setSelectedCustomers(new Set())
+    }
+  }
+
   const handleIssueVouchers = async () => {
     if (!selectedVoucher || selectedCustomers.size === 0) {
       setToast({ message: 'Vui lòng chọn voucher và khách hàng', type: 'error' })
@@ -398,7 +431,7 @@ export default function Vouchers() {
             onCustomerToggle={toggleCustomer}
             onToggleAll={toggleAllCustomers}
             onVoucherChange={setSelectedVoucher}
-            onReasonChange={setSelectedReason}
+            onReasonChange={handleReasonChange}
             onSearchChange={setSearchTerm}
             onFilterChange={setMembershipFilter}
             onIssue={handleIssueVouchers}

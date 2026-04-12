@@ -914,12 +914,14 @@ const AdminManagerDashboard: React.FC = () => {
     loadAllData()
 
     // Subscribe to realtime updates
-    const subscription = orderService.subscribeToOrders(undefined, () => {
-      loadAllData()
-    })
+    if (userBranchId) {
+      const subscription = orderService.subscribeToOrders(Number(userBranchId), () => {
+        loadAllData()
+      })
 
-    return () => {
-      subscription.unsubscribe()
+      return () => {
+        subscription.unsubscribe()
+      }
     }
   }, [userRole, userBranchId])
 

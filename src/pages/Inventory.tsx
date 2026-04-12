@@ -4,6 +4,7 @@ import {
   Box,
   FlaskConical,
 } from 'lucide-react'
+import { supabase } from '@/utils/supabaseClient'
 import {
   ingredientService,
   branchInventoryService,
@@ -79,8 +80,10 @@ export default function Inventory() {
   // ===== Recipes Tab State =====
   const [products, setProducts] = useState<Product[]>([])
   const [selectedProduct, setSelectedProduct] = useState<string>('')
+  const [sizes, setSizes] = useState<any[]>([])
+  const [selectedSize, setSelectedSize] = useState<string>('')
   const [recipes, setRecipes] = useState<Recipe[]>([])
-  const [newIngredientForm, setNewIngredientForm] = useState({ ingredientid: '', amount: '' })
+  const [newIngredientForm, setNewIngredientForm] = useState({ ingredientid: '', amount: '', sizeid: '' })
 
   // ===== Lifecycle =====
   useEffect(() => {
@@ -119,6 +122,14 @@ export default function Inventory() {
       const productsData = await productService.getProducts()
       setProducts(productsData || [])
       console.log('[LOAD] Products count:', productsData?.length)
+
+      // Load sizes
+      const { data: sizesData } = await supabase.from('sizes').select('*')
+      if (sizesData) {
+        setSizes(sizesData)
+        setSelectedSize(String(sizesData[0]?.sizeid || ''))
+        console.log('[LOAD] Sizes count:', sizesData?.length)
+      }
 
       // Load branches based on role
       if (isSuperAdmin) {
@@ -171,10 +182,11 @@ export default function Inventory() {
     }
   }
 
-  const loadRecipes = async (productId: string) => {
+  const loadRecipes = async (productId: string, sizeId?: string) => {
     if (!productId) return
     try {
-      const data = await recipeService.getRecipesByProduct(productId)
+      console.log('[Inventory] Loading recipes for productId:', productId, 'sizeId:', sizeId)
+      const data = await recipeService.getRecipesByProduct(productId, sizeId)
       setRecipes(data || [])
     } catch (error) {
       console.error('Error loading recipes:', error)
@@ -218,49 +230,66 @@ export default function Inventory() {
       const { supabase } = await import('@/utils/supabaseClient')
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
       
-      const quantity = parseInt(restockForm.quantity, 10)
-      const unitprice = parseFloat(restockForm.unitprice)
+      // ===== CONVERT & VALIDATE ALL NUMERIC FIELDS =====
+      const quantity = Math.floor(parseFloat(restockForm.quantity) || 0)
+      const unitprice = Math.floor(parseFloat(restockForm.unitprice) || 0)
       const totalcost = quantity * unitprice
+      
+      // Convert branch + ingredient IDs to numbers
+      const branchId = Number(userBranchId || selectedBranch)
+      const ingredientId = Number(selectedIngredientId)
+      const employeeid = Number(currentUser.employeeid) || Number(currentUser.id) || 0
+      
+      console.log('[RESTOCK] Converted values:', { quantity, unitprice, totalcost, branchId, ingredientId, employeeid })
 
-      // 1. Create stockreceipts record
+      // 1. Create stockreceipts record (Phiếu nhập)
       const { data: receiptData, error: receiptError } = await supabase
         .from('stockreceipts')
         .insert({
           importdate: new Date().toISOString(),
           totalcost: totalcost,
-          branchid: userBranchId || selectedBranch,
-          employeeid: currentUser.employeeid || currentUser.id || 'unknown',
+          branchid: branchId,
+          employeeid: employeeid,
         })
         .select()
 
-      if (receiptError) throw receiptError
+      if (receiptError) {
+        console.error('[RESTOCK] stockreceipts error:', receiptError)
+        throw receiptError
+      }
       const receiptid = receiptData?.[0]?.receiptid
+      console.log('[RESTOCK] Receipt created:', receiptid)
 
-      // 2. Create receiptdetails record
+      // 2. Create receiptdetails record (Chi tiết nhập)
       if (receiptid) {
         const { error: detailError } = await supabase
           .from('receiptdetails')
           .insert({
             receiptid: receiptid,
-            ingredientid: selectedIngredientId,
+            ingredientid: ingredientId,
             quantity: quantity,
             unitprice: unitprice,
             amount: totalcost,
           })
 
-        if (detailError) throw detailError
+        if (detailError) {
+          console.error('[RESTOCK] receiptdetails error:', detailError)
+          throw detailError
+        }
+        console.log('[RESTOCK] Receipt details created')
 
-        // 3. Update branchinventory currentstock
-        const branchId = userBranchId || selectedBranch
-        
+        // 3. Update branchinventory currentstock (Cập nhật tồn kho)
         const { data: currentInventory, error: getError } = await supabase
           .from('branchinventory')
           .select('currentstock')
           .eq('branchid', branchId)
-          .eq('ingredientid', selectedIngredientId)
+          .eq('ingredientid', ingredientId)
           .single()
 
-        if (getError && getError.code !== 'PGRST116') throw getError
+        if (getError && getError.code !== 'PGRST116') {
+          console.error('[RESTOCK] Get current stock error:', getError)
+          throw getError
+        }
 
         const currentStock = currentInventory?.currentstock || 0
         const newStock = currentStock + quantity
@@ -269,11 +298,15 @@ export default function Inventory() {
           .from('branchinventory')
           .upsert({
             branchid: branchId,
-            ingredientid: selectedIngredientId,
+            ingredientid: ingredientId,
             currentstock: newStock,
           })
 
-        if (updateError) throw updateError
+        if (updateError) {
+          console.error('[RESTOCK] Update inventory error:', updateError)
+          throw updateError
+        }
+        console.log('[RESTOCK] Inventory updated. New stock:', newStock)
       }
 
       showToast('Nhập kho thành công', 'success')
@@ -372,16 +405,23 @@ export default function Inventory() {
       return
     }
 
+    if (!newIngredientForm.sizeid) {
+      showToast('Vui lòng chọn Size', 'error')
+      return
+    }
+
     try {
       const recipe = {
         productid: selectedProduct,
         ingredientid: newIngredientForm.ingredientid,
         amount: Number(newIngredientForm.amount),
+        sizeid: Number(newIngredientForm.sizeid),
       }
+      console.log('[Inventory] Creating recipe with sizeid:', recipe.sizeid)
       await recipeService.createRecipe(recipe)
       showToast('Thêm nguyên liệu thành công', 'success')
-      loadRecipes(selectedProduct)
-      setNewIngredientForm({ ingredientid: '', amount: '' })
+      loadRecipes(selectedProduct, selectedSize)
+      setNewIngredientForm({ ingredientid: '', amount: '', sizeid: '' })
     } catch (error) {
       console.error('Error adding ingredient:', error)
       showToast('Lỗi khi thêm nguyên liệu', 'error')
@@ -392,7 +432,7 @@ export default function Inventory() {
     try {
       await recipeService.deleteRecipe(recipeid)
       showToast('Xóa công thức thành công', 'success')
-      if (selectedProduct) loadRecipes(selectedProduct)
+      if (selectedProduct) loadRecipes(selectedProduct, selectedSize)
     } catch (error) {
       console.error('Error deleting recipe:', error)
       showToast('Lỗi khi xóa công thức', 'error')
@@ -424,6 +464,7 @@ export default function Inventory() {
         form={restockForm}
         onFormChange={(field, value) => setRestockForm(prev => ({ ...prev, [field]: value }))}
         selectedIngredientName={branchInventory.find(item => item.ingredientid === selectedIngredientId)?.ingredient?.name || ''}
+        selectedIngredientUnit={branchInventory.find(item => item.ingredientid === selectedIngredientId)?.ingredient?.unit || ''}
       />
 
       {/* Audit Modal */}
@@ -509,10 +550,20 @@ export default function Inventory() {
       {activeTab === 'recipes' && (
         <RecipesTab
           products={products}
+          sizes={sizes}
           selectedProduct={selectedProduct}
+          selectedSize={selectedSize}
           onProductChange={(productId) => {
             setSelectedProduct(productId)
-            loadRecipes(productId)
+            loadRecipes(productId, selectedSize)
+          }}
+          onSizeChange={(sizeId) => {
+            console.log('[Inventory] Size changed to:', sizeId)
+            setSelectedSize(sizeId)
+            // Re-fetch recipes with new size filter
+            if (selectedProduct) {
+              loadRecipes(selectedProduct, sizeId)
+            }
           }}
           recipes={recipes}
           availableIngredients={ingredients}
