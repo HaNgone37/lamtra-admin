@@ -11,12 +11,15 @@ import {
   recipeService,
   productService,
   branchService,
+  stockReceiptService,
+  inventoryAuditService,
 } from '@/services/inventoryService'
 import { Ingredient, Recipe, Product, BranchInventory } from '@/types'
 import Toast from '@/components/Toast'
 import { RestockModal } from '@/components/inventory/RestockModal'
 import { AuditModal } from '@/components/inventory/AuditModal'
 import { AddIngredientModal } from '@/components/inventory/AddIngredientModal'
+import { AddInventoryItemModal } from '@/components/inventory/AddInventoryItemModal'
 import { InventoryCategoriesTab } from '@/components/inventory/InventoryCategoriesTab'
 import { InventoryStockTab } from '@/components/inventory/InventoryStockTab'
 import { RecipesTab } from '@/components/inventory/RecipesTab'
@@ -59,13 +62,14 @@ export default function Inventory() {
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([])
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>('')
+  const [selectedIngredient, setSelectedIngredient] = useState<BranchInventory | null>(null)
   const [restockForm, setRestockForm] = useState({ quantity: '', unitprice: '' })
   
   // ===== Audit State =====
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false)
   const [selectedIngredientForAudit, setSelectedIngredientForAudit] = useState<string>('')
   const [currentStockForAudit, setCurrentStockForAudit] = useState<number>(0)
-  const [auditForm, setAuditForm] = useState({ actualStock: '', reason: 'Hao hụt', notes: '' })
+  const [auditForm, setAuditForm] = useState({ actualStock: '', reason: 'Hao hụt' })
 
   // ===== Categories Tab State =====
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
@@ -76,6 +80,9 @@ export default function Inventory() {
   const [branches, setBranches] = useState<Branch[]>([])
   const [selectedBranch, setSelectedBranch] = useState<string>('')
   const [branchInventory, setBranchInventory] = useState<BranchInventory[]>([])
+  const [isAddInventoryItemModalOpen, setIsAddInventoryItemModalOpen] = useState(false)
+  const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([])
+  const [isLoadingAvailableIngredients, setIsLoadingAvailableIngredients] = useState(false)
 
   // ===== Recipes Tab State =====
   const [products, setProducts] = useState<Product[]>([])
@@ -227,99 +234,65 @@ export default function Inventory() {
     }
 
     try {
-      const { supabase } = await import('@/utils/supabaseClient')
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-      
-      // ===== CONVERT & VALIDATE ALL NUMERIC FIELDS =====
       const quantity = Math.floor(parseFloat(restockForm.quantity) || 0)
       const unitprice = Math.floor(parseFloat(restockForm.unitprice) || 0)
-      const totalcost = quantity * unitprice
       
-      // Convert branch + ingredient IDs to numbers
-      const branchId = Number(userBranchId || selectedBranch)
+      // ===== Xác định branch =====
+      let branchId = ''
+      if (userBranchId) {
+        // Manager: sử dụng chi nhánh của mình
+        branchId = userBranchId
+      } else if (selectedBranch) {
+        // Super Admin: sử dụng chi nhánh được chọn
+        branchId = selectedBranch
+      } else {
+        showToast('Vui lòng chọn chi nhánh', 'error')
+        return
+      }
+
       const ingredientId = Number(selectedIngredientId)
-      const employeeid = Number(currentUser.employeeid) || Number(currentUser.id) || 0
-      
-      console.log('[RESTOCK] Converted values:', { quantity, unitprice, totalcost, branchId, ingredientId, employeeid })
+      const employeeid = currentUser.employeeid || currentUser.id || '0'
 
-      // 1. Create stockreceipts record (Phiếu nhập)
-      const { data: receiptData, error: receiptError } = await supabase
-        .from('stockreceipts')
-        .insert({
-          importdate: new Date().toISOString(),
-          totalcost: totalcost,
-          branchid: branchId,
-          employeeid: employeeid,
-        })
-        .select()
+      console.log('[RESTOCK] Starting restock with:', {
+        quantity,
+        unitprice,
+        totalcost: quantity * unitprice,
+        branchId,
+        ingredientId,
+        ingredientName: selectedIngredient?.ingredient?.name,
+        employeeid,
+      })
 
-      if (receiptError) {
-        console.error('[RESTOCK] stockreceipts error:', receiptError)
-        throw receiptError
-      }
-      const receiptid = receiptData?.[0]?.receiptid
-      console.log('[RESTOCK] Receipt created:', receiptid)
+      // ===== Gọi service (Zero-Error - 4 bước) =====
+      const result = await stockReceiptService.createReceipt({
+        branchId: Number(branchId),
+        employeeid,
+        quantity,
+        unitprice,
+        ingredientid: ingredientId,
+      })
 
-      // 2. Create receiptdetails record (Chi tiết nhập)
-      if (receiptid) {
-        const { error: detailError } = await supabase
-          .from('receiptdetails')
-          .insert({
-            receiptid: receiptid,
-            ingredientid: ingredientId,
-            quantity: quantity,
-            unitprice: unitprice,
-            amount: totalcost,
-          })
+      console.log('[RESTOCK] Result:', result)
 
-        if (detailError) {
-          console.error('[RESTOCK] receiptdetails error:', detailError)
-          throw detailError
-        }
-        console.log('[RESTOCK] Receipt details created')
-
-        // 3. Update branchinventory currentstock (Cập nhật tồn kho)
-        const { data: currentInventory, error: getError } = await supabase
-          .from('branchinventory')
-          .select('currentstock')
-          .eq('branchid', branchId)
-          .eq('ingredientid', ingredientId)
-          .single()
-
-        if (getError && getError.code !== 'PGRST116') {
-          console.error('[RESTOCK] Get current stock error:', getError)
-          throw getError
-        }
-
-        const currentStock = currentInventory?.currentstock || 0
-        const newStock = currentStock + quantity
-
-        const { error: updateError } = await supabase
-          .from('branchinventory')
-          .upsert({
-            branchid: branchId,
-            ingredientid: ingredientId,
-            currentstock: newStock,
-          })
-
-        if (updateError) {
-          console.error('[RESTOCK] Update inventory error:', updateError)
-          throw updateError
-        }
-        console.log('[RESTOCK] Inventory updated. New stock:', newStock)
-      }
-
-      showToast('Nhập kho thành công', 'success')
-      setIsRestockModalOpen(false)
-      setSelectedIngredientId('')
-      setRestockForm({ quantity: '', unitprice: '' })
-      
-      if (selectedBranch) {
-        loadBranchInventory(selectedBranch)
+      if (result.success) {
+        showToast(result.message, 'success')
+        
+        // ===== CLEANUP STATE & REFRESH INVENTORY =====
+        setIsRestockModalOpen(false)
+        setSelectedIngredient(null)
+        setSelectedIngredientId('')
+        setRestockForm({ quantity: '', unitprice: '' })
+        
+        // Reload tồn kho để hiển thị cập nhật
+        await loadBranchInventory(branchId)
+      } else {
+        showToast(result.message || 'Lỗi khi nhập kho', 'error')
       }
     } catch (error) {
-      console.error('Error restocking:', error)
-      showToast('Lỗi khi nhập kho', 'error')
+      console.error('[RESTOCK] Error:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Có lỗi không xác định'
+      showToast(`Lỗi nhập kho: ${errorMsg}`, 'error')
     }
   }
 
@@ -330,67 +303,43 @@ export default function Inventory() {
     }
 
     try {
-      const { supabase } = await import('@/utils/supabaseClient')
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-      
       const branchId = userBranchId || selectedBranch
-      const actualStock = parseInt(auditForm.actualStock, 10)
-      const currentStock = currentStockForAudit
-      const difference = actualStock - currentStock
+      const systemstock = currentStockForAudit
+      const physicalstock = parseInt(auditForm.actualStock, 10)
+      const employeeid = currentUser.employeeid || currentUser.id || '0'
 
-      // 1. Create inventoryaudits record
-      const { data: auditData, error: auditError } = await supabase
-        .from('inventoryaudits')
-        .insert({
-          auditdate: new Date().toISOString(),
-          branchid: branchId,
-          employeeid: currentUser.employeeid || currentUser.id || 'unknown',
-          totaldifference: difference,
-        })
-        .select()
+      console.log('[AUDIT] Starting with values:', { branchId, systemstock, physicalstock, employeeid })
 
-      if (auditError) throw auditError
-      const auditid = auditData?.[0]?.auditid
+      // ===== Gọi service (Zero-Error) =====
+      const result = await inventoryAuditService.createAudit({
+        branchId: Number(branchId),
+        employeeid: employeeid,
+        ingredientid: selectedIngredientForAudit,
+        systemstock,
+        physicalstock,
+        reason: auditForm.reason,
+      })
 
-      // 2. Create auditdetails record
-      if (auditid) {
-        const { error: detailError } = await supabase
-          .from('auditdetails')
-          .insert({
-            auditid: auditid,
-            ingredientid: selectedIngredientForAudit,
-            expectedstock: currentStock,
-            actualstock: actualStock,
-            difference: difference,
-            reason: auditForm.reason,
-            notes: auditForm.notes || null,
-          })
+      console.log('[AUDIT] Result:', result)
 
-        if (detailError) throw detailError
-      }
+      if (result.success) {
+        showToast(result.message, 'success')
+        
+        // ===== REFRESH Dữ liệu =====
+        setIsAuditModalOpen(false)
+        setSelectedIngredientForAudit('')
+        setCurrentStockForAudit(0)
+        setAuditForm({ actualStock: '', reason: 'Hao hụt' })
 
-      // 3. Update branchinventory currentstock
-      const { error: updateError } = await supabase
-        .from('branchinventory')
-        .upsert({
-          branchid: branchId,
-          ingredientid: selectedIngredientForAudit,
-          currentstock: actualStock,
-        })
-
-      if (updateError) throw updateError
-
-      showToast(`Kiểm kê thành công (Chênh lệch: ${difference > 0 ? '+' : ''}${difference})`, 'success')
-      setIsAuditModalOpen(false)
-      setSelectedIngredientForAudit('')
-      setCurrentStockForAudit(0)
-      setAuditForm({ actualStock: '', reason: 'Hao hụt', notes: '' })
-      
-      if (selectedBranch) {
-        loadBranchInventory(selectedBranch)
+        // Gọi đồng thời reload bảng
+        const selectedBranchId = userBranchId || selectedBranch
+        await Promise.all([
+          loadBranchInventory(selectedBranchId),
+        ])
       }
     } catch (error) {
-      console.error('[ERROR] handleAudit failed:', error)
+      console.error('[AUDIT] Error:', error)
       showToast('Lỗi khi kiểm kê', 'error')
     }
   }
@@ -439,6 +388,52 @@ export default function Inventory() {
     }
   }
 
+  // ===== Load Available Ingredients for Branch =====
+  const loadAvailableIngredients = async (branchId: string) => {
+    try {
+      setIsLoadingAvailableIngredients(true)
+      console.log('[AVAILABLE] Loading available ingredients for branch:', branchId)
+      const available = await branchInventoryService.getAvailableIngredientsForBranch(branchId)
+      setAvailableIngredients(available || [])
+      console.log('[AVAILABLE] Count:', available?.length)
+    } catch (error) {
+      console.error('[AVAILABLE] Error:', error)
+      showToast('Lỗi khi tải danh sách nguyên liệu', 'error')
+    } finally {
+      setIsLoadingAvailableIngredients(false)
+    }
+  }
+
+  // ===== Handle Add Inventory Item =====
+  const handleAddInventoryItem = async (ingredientId: string | number) => {
+    try {
+      console.log('[ADD-ITEM] Starting add inventory item:', {
+        branchId: userBranchId || selectedBranch,
+        ingredientId,
+      })
+
+      const branchId = userBranchId || selectedBranch
+      if (!branchId) {
+        showToast('Vui lòng chọn chi nhánh', 'error')
+        return
+      }
+
+      // Call service to add ingredient (currentstock = 0)
+      await branchInventoryService.addToInventory(Number(branchId), ingredientId, 0)
+
+      console.log('[ADD-ITEM] Success')
+      showToast('Thêm nguyên liệu thành công', 'success')
+
+      // ===== CLEANUP STATE & REFRESH =====
+      setIsAddInventoryItemModalOpen(false)
+      await loadBranchInventory(branchId)
+    } catch (error) {
+      console.error('[ADD-ITEM] Error:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Có lỗi không xác định'
+      showToast(`Lỗi thêm nguyên liệu: ${errorMsg}`, 'error')
+    }
+  }
+
   // ===== Render =====
   return (
     <div style={{ padding: '20px' }}>
@@ -457,14 +452,15 @@ export default function Inventory() {
         isOpen={isRestockModalOpen}
         onClose={() => {
           setIsRestockModalOpen(false)
+          setSelectedIngredient(null)
           setSelectedIngredientId('')
           setRestockForm({ quantity: '', unitprice: '' })
         }}
         onSubmit={handleRestock}
         form={restockForm}
         onFormChange={(field, value) => setRestockForm(prev => ({ ...prev, [field]: value }))}
-        selectedIngredientName={branchInventory.find(item => item.ingredientid === selectedIngredientId)?.ingredient?.name || ''}
-        selectedIngredientUnit={branchInventory.find(item => item.ingredientid === selectedIngredientId)?.ingredient?.unit || ''}
+        selectedIngredientName={selectedIngredient?.ingredient?.name || '?'}
+        selectedIngredientUnit={selectedIngredient?.ingredient?.unit || '?'}
       />
 
       {/* Audit Modal */}
@@ -474,7 +470,7 @@ export default function Inventory() {
           setIsAuditModalOpen(false)
           setSelectedIngredientForAudit('')
           setCurrentStockForAudit(0)
-          setAuditForm({ actualStock: '', reason: 'Hao hụt', notes: '' })
+          setAuditForm({ actualStock: '', reason: 'Hao hụt' })
         }}
         onSubmit={handleAudit}
         form={auditForm}
@@ -488,6 +484,15 @@ export default function Inventory() {
         isOpen={isAddIngredientModalOpen}
         onClose={() => setIsAddIngredientModalOpen(false)}
         onSubmit={handleAddIngredient}
+      />
+
+      {/* Add Inventory Item Modal */}
+      <AddInventoryItemModal
+        isOpen={isAddInventoryItemModalOpen}
+        onClose={() => setIsAddInventoryItemModalOpen(false)}
+        onSubmit={handleAddInventoryItem}
+        availableIngredients={availableIngredients}
+        isLoading={isLoadingAvailableIngredients}
       />
 
       <h1 style={{ color: colors.text, marginBottom: '24px', overflow: 'visible', whiteSpace: 'normal' }}>Quản lý Kho hàng</h1>
@@ -535,14 +540,31 @@ export default function Inventory() {
           }}
           branchInventory={branchInventory}
           canEdit={true}
+          onAddItemClick={() => {
+            const branchId = userBranchId || selectedBranch
+            if (!branchId) {
+              showToast('Vui lòng chọn chi nhánh', 'error')
+              return
+            }
+            loadAvailableIngredients(branchId)
+            setIsAddInventoryItemModalOpen(true)
+          }}
           onRestockClick={(ingredientId: string) => {
-            setSelectedIngredientId(ingredientId)
-            setIsRestockModalOpen(true)
+            // ===== Tìm ingredient từ branchInventory =====
+            const ingredient = branchInventory.find(item => String(item.ingredientid) === ingredientId)
+            if (ingredient) {
+              setSelectedIngredient(ingredient)
+              setSelectedIngredientId(ingredientId)
+              setIsRestockModalOpen(true)
+            } else {
+              console.warn('[WARN] Ingredient not found:', ingredientId)
+              showToast('Không tìm thấy nguyên liệu', 'error')
+            }
           }}
           onAuditClick={(ingredientId: string, currentStock: number) => {
             setSelectedIngredientForAudit(ingredientId)
             setCurrentStockForAudit(currentStock)
-            setAuditForm({ actualStock: String(currentStock), reason: 'Hao hụt', notes: '' })
+            setAuditForm({ actualStock: String(currentStock), reason: 'Hao hụt' })
             setIsAuditModalOpen(true)
           }}
         />

@@ -26,12 +26,12 @@
 
 ### Phân hệ 3: Quản lý Kho & Công thức (Inventory & Recipes)
 10. **`ingredients` (Nguyên liệu thô):** `ingredientid` (int8, PK), `name`, `unit` (g, ml, cái), `baseprice` (giá nhập), `minstocklevel`.
-11. **`recipes` (Công thức):** `recipeid` (int8, PK), `productid` (FK), `sizeid` (FK, Nullable), `toppingid` (FK, Nullable), `ingredientid` (FK), **`amount`** (định lượng tiêu hao).
-12. **`branchinventory` (Tồn kho quán):** `branchid` (int8, FK), `ingredientid` (int8, FK), `currentstock`.
-13. **`stockreceipts` (Phiếu nhập kho):** `receiptid` (int8, PK), `importdate`, `totalcost`, `branchid` (FK), `employeeid` (FK).
-14. **`receiptdetails` (Chi tiết nhập):** `receiptid` (FK), `ingredientid` (FK), `quantity` (số lượng nhập), `unitprice`, `amount` (thành tiền).
-15. **`inventoryaudits` (Phiếu kiểm kho):** `auditid` (int8, PK), `branchid` (FK), `employeeid` (FK), `auditdate`, `note`.
-16. **`auditdetails` (Chi tiết kiểm kê):** `auditid` (FK), `ingredientid` (FK), `systemstock` (tồn máy), `actualstock` (tồn thực tế), `difference`, `reason`.
+11. **`recipes` (Công thức):** `recipeid` (int8, PK - Tự tăng), `productid` (int8, FK), `sizeid` (int8, FK), `toppingid` (int8, FK, Nullable), `ingredientid` (int8, FK), `amount` (int8: định lượng tiêu hao).
+12. **`branchinventory` (Tồn kho thực tế):** `branchid` (int8, FK), `ingredientid` (int8, FK), `currentstock` (int8). (Bảng trung gian nối giữa Quán và Nguyên liệu).
+13. **`stockreceipts` (Phiếu nhập kho):** `receiptid` (int8, PK - Tự tăng), `importdate` (timestamptz), `totalcost` (int8), `branchid` (int8, FK), `employeeid` (uuid, FK - Liên kết với `accounts`).
+14. **`receiptdetails` (Chi tiết nhập):** `id` (int8, PK - Tự tăng), `receiptid` (int8, FK), `ingredientid` (int8, FK), `quantity` (int8), `unitprice` (int8), `amount` (int8: thành tiền = quantity * unitprice).
+15. **`inventoryaudits` (Phiếu kiểm kho):** `auditid` (int8, PK - Tự tăng), `auditdate` (timestamptz), `note` (text), `branchid` (int8, FK), `employeeid` (uuid, FK).
+16. **`auditdetails` (Chi tiết kiểm kê):** `id` (int8, PK - Tự tăng), `auditid` (int8, FK), `ingredientid` (int8, FK), `systemstock` (int8), `physicalstock` (int8), `difference` (int8: physical - system), `reason` (text).
 
 ### Phân hệ 4: Marketing & Loyalty (CRM)
 17. **`vouchers`:** `voucherid` (int4, PK), `code`, `title`, `discountvalue`, `discounttype`, `expirydate`, `iswelcome` (bool), `pointsrequired`, `created_at`.

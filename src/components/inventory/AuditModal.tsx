@@ -16,7 +16,7 @@ interface AuditModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: () => void
-  form: { actualStock: string; reason: string; notes: string }
+  form: { actualStock: string; reason: string }
   onFormChange: (field: string, value: string) => void
   selectedIngredientName: string
   currentStock: number
@@ -147,28 +147,6 @@ export const AuditModal: React.FC<AuditModalProps> = ({
             <option value="Đếm lại">Đếm lại</option>
             <option value="Khác">Khác</option>
           </select>
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', color: colors.text, fontWeight: '600' }}>
-            Ghi chú (không bắt buộc):
-          </label>
-          <textarea
-            value={form.notes}
-            onChange={e => onFormChange('notes', e.target.value)}
-            placeholder="Nhập ghi chú nếu cần..."
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: `1px solid ${colors.border}`,
-              borderRadius: '6px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit',
-              minHeight: '80px',
-              resize: 'vertical',
-            }}
-          />
         </div>
 
         <div style={{ display: 'flex', gap: '12px' }}>

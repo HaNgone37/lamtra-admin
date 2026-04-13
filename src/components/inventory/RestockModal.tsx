@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 // ============ LAM TRÀ COLOR SCHEME (Pink Theme) ============
 const colors = {
@@ -33,20 +33,46 @@ export const RestockModal: React.FC<RestockModalProps> = ({
   selectedIngredientUnit,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const quantityInputRef = useRef<HTMLInputElement>(null)
+  
+  // Auto-focus khi modal mở
+  useEffect(() => {
+    if (isOpen && quantityInputRef.current) {
+      setTimeout(() => quantityInputRef.current?.focus(), 100)
+    }
+  }, [isOpen])
   
   if (!isOpen) return null
 
-  const quantity = parseInt(form.quantity || '0')
-  const unitprice = parseInt(form.unitprice || '0')
+  // ===== Tính toán =====
+  const quantity = Math.max(0, parseInt(form.quantity || '0'))
+  const unitprice = Math.max(0, parseInt(form.unitprice || '0'))
   const totalAmount = quantity * unitprice
   
+  // ===== Validation =====
+  const isFormValid = quantity > 0 && unitprice > 0
+  
   const handleSubmitWithLoading = async () => {
+    if (!isFormValid) return
     setIsSubmitting(true)
     try {
       await onSubmit()
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // ===== Prevent negative numbers =====
+  const handleQuantityChange = (value: string) => {
+    const num = parseInt(value || '0')
+    if (num < 0) return
+    onFormChange('quantity', value)
+  }
+
+  const handleUnitpriceChange = (value: string) => {
+    const num = parseInt(value || '0')
+    if (num < 0) return
+    onFormChange('unitprice', value)
   }
 
   return (
@@ -62,7 +88,7 @@ export const RestockModal: React.FC<RestockModalProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        backdrop: 'blur(8px)',
+        backdropFilter: 'blur(8px)',
       }}
       onClick={onClose}
     >
@@ -88,7 +114,7 @@ export const RestockModal: React.FC<RestockModalProps> = ({
             letterSpacing: '0px',
             fontFamily: 'Be Vietnam Pro, sans-serif',
           }}>
-            Nhập Kho
+            📦 Nhập Kho
           </h2>
           <p style={{
             color: colors.textLight,
@@ -98,7 +124,7 @@ export const RestockModal: React.FC<RestockModalProps> = ({
             lineHeight: '18px',
             fontFamily: 'Be Vietnam Pro, sans-serif',
           }}>
-            {selectedIngredientName} • {selectedIngredientUnit || '?'}
+            {selectedIngredientName || 'N/A'} • {selectedIngredientUnit || 'N/A'}
           </p>
         </div>
 
@@ -116,13 +142,15 @@ export const RestockModal: React.FC<RestockModalProps> = ({
               marginBottom: '7px',
               fontFamily: 'Be Vietnam Pro, sans-serif',
             }}>
-              Số Lượng ({selectedIngredientUnit || '?'})
+              Số Lượng ({selectedIngredientUnit || 'cái'})
             </label>
             <input
+              ref={quantityInputRef}
               type="number"
+              min="0"
               value={form.quantity}
-              onChange={e => onFormChange('quantity', e.target.value)}
-              placeholder="0"
+              onChange={e => handleQuantityChange(e.target.value)}
+              placeholder="Nhập số lượng"
               style={{
                 width: '100%',
                 padding: '11px 14px',
@@ -138,12 +166,12 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                 fontFamily: 'Be Vietnam Pro, sans-serif',
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = colors.primary
-                e.target.style.boxShadow = `0 0 0 2px ${colors.primaryVeryLight}`
+                e.currentTarget.style.borderColor = colors.primary
+                e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.primaryVeryLight}`
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = colors.primaryLight
-                e.target.style.boxShadow = 'none'
+                e.currentTarget.style.borderColor = colors.primaryLight
+                e.currentTarget.style.boxShadow = 'none'
               }}
             />
           </div>
@@ -164,9 +192,10 @@ export const RestockModal: React.FC<RestockModalProps> = ({
             </label>
             <input
               type="number"
+              min="0"
               value={form.unitprice}
-              onChange={e => onFormChange('unitprice', e.target.value)}
-              placeholder="0"
+              onChange={e => handleUnitpriceChange(e.target.value)}
+              placeholder="Nhập đơn giá"
               style={{
                 width: '100%',
                 padding: '11px 14px',
@@ -182,12 +211,12 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                 fontFamily: 'Be Vietnam Pro, sans-serif',
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = colors.primary
-                e.target.style.boxShadow = `0 0 0 2px ${colors.primaryVeryLight}`
+                e.currentTarget.style.borderColor = colors.primary
+                e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.primaryVeryLight}`
               }}
               onBlur={(e) => {
-                e.target.style.borderColor = colors.primaryLight
-                e.target.style.boxShadow = 'none'
+                e.currentTarget.style.borderColor = colors.primaryLight
+                e.currentTarget.style.boxShadow = 'none'
               }}
             />
           </div>
@@ -195,10 +224,11 @@ export const RestockModal: React.FC<RestockModalProps> = ({
 
         {/* Total Amount Box */}
         <div style={{
-          backgroundColor: colors.primaryVeryLight,
+          backgroundColor: isFormValid ? colors.primaryVeryLight : '#F5F5F5',
           padding: '14px 16px',
           borderRadius: '12px',
           marginBottom: '24px',
+          transition: 'all 0.3s ease',
         }}>
           <div style={{
             fontSize: '10px',
@@ -214,11 +244,11 @@ export const RestockModal: React.FC<RestockModalProps> = ({
           <div style={{
             fontSize: '22px',
             fontWeight: '700',
-            color: colors.primary,
+            color: isFormValid ? colors.primary : colors.textLight,
             lineHeight: '1',
             fontFamily: 'Be Vietnam Pro, sans-serif',
           }}>
-            {totalAmount.toLocaleString('vi-VN')} VNĐ
+            {totalAmount > 0 ? totalAmount.toLocaleString('vi-VN') : '0'} VNĐ
           </div>
         </div>
 
@@ -249,33 +279,33 @@ export const RestockModal: React.FC<RestockModalProps> = ({
           </button>
           <button
             onClick={handleSubmitWithLoading}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isFormValid}
             style={{
               flex: 1,
               padding: '11px 16px',
-              background: colors.primary,
+              background: isFormValid ? colors.primary : '#CCCCCC',
               color: colors.white,
               border: 'none',
               borderRadius: '10px',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              cursor: isFormValid && !isSubmitting ? 'pointer' : 'not-allowed',
               fontWeight: '600',
               fontSize: '13px',
               letterSpacing: '0.2px',
               transition: 'all 0.2s ease',
-              opacity: isSubmitting ? 0.8 : 1,
-              boxShadow: `0 4px 12px ${colors.primary}30`,
+              opacity: isFormValid ? 1 : 0.6,
+              boxShadow: isFormValid ? `0 4px 12px ${colors.primary}30` : 'none',
               fontFamily: 'Be Vietnam Pro, sans-serif',
             }}
-            onMouseEnter={(e) => !isSubmitting && (
+            onMouseEnter={(e) => isFormValid && !isSubmitting && (
               e.currentTarget.style.transform = 'translateY(-1px)',
               e.currentTarget.style.boxShadow = `0 6px 16px ${colors.primary}40`
             )}
-            onMouseLeave={(e) => (
+            onMouseLeave={(e) => isFormValid && (
               e.currentTarget.style.transform = 'translateY(0)',
               e.currentTarget.style.boxShadow = `0 4px 12px ${colors.primary}30`
             )}
           >
-            {isSubmitting ? 'Đang xử lý...' : 'Xác Nhận'}
+            {isSubmitting ? 'Đang xử lý...' : 'Xác Nhận ✓'}
           </button>
         </div>
       </div>

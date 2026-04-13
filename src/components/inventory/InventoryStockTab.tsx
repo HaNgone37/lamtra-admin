@@ -60,6 +60,7 @@ interface InventoryStockTabProps {
   branchInventory: BranchInventory[]
   onRestockClick: (ingredientId: string) => void
   onAuditClick: (ingredientId: string, currentStock: number) => void
+  onAddItemClick?: () => void
   canEdit?: boolean
 }
 
@@ -70,6 +71,7 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
   branchInventory,
   onRestockClick,
   onAuditClick,
+  onAddItemClick,
   canEdit = true,
 }) => {
   const tableHeaderStyle = {
@@ -117,6 +119,21 @@ export const InventoryStockTab: React.FC<InventoryStockTabProps> = ({
           </select>
         </div>
       )}
+
+      {/* Inventory Table Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h3 style={{ margin: 0, color: colors.text, fontSize: '16px', fontWeight: '600' }}>
+          Danh sách tồn kho
+        </h3>
+        {canEdit && (
+          <button
+            onClick={onAddItemClick}
+            className="bg-white text-purple-600 border border-purple-600 hover:bg-purple-50 px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200"
+          >
+            + Thêm Nguyên Liệu
+          </button>
+        )}
+      </div>
 
       {/* Inventory Table */}
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
