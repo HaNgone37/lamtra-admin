@@ -12,7 +12,6 @@ import {
   PackageX,
   RefreshCw,
   Play,
-  CheckSquare,
   Bell
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -73,6 +72,7 @@ interface StaffOrder {
   orderid: string
   orderdate: string
   status: 'Chờ xác nhận' | 'Đang làm' | 'Đang giao' | 'Hoàn thành' | 'Hủy'
+  ordertype?: 'Tại chỗ' | 'Giao hàng'
   finalamount: number
   items: StaffOrderItem[]
 }
@@ -102,7 +102,6 @@ const KDSOrderCard: React.FC<KDSOrderCardProps> = ({ order, onUpdateStatus, isUp
 
   const isWaiting = order.status === 'Chờ xác nhận'
   const isInProgress = order.status === 'Đang làm'
-  const isShipping = order.status === 'Đang giao'
 
   // Urgency: green < 5 min, yellow 5-10 min, red >= 10 min
   const urgency: 'green' | 'yellow' | 'red' =
@@ -336,6 +335,69 @@ const KDSOrderCard: React.FC<KDSOrderCardProps> = ({ order, onUpdateStatus, isUp
               padding: '16px 0',
               borderRadius: 14,
               border: 'none',
+              background: isUpdating ? '#CBD5E0' : 'linear-gradient(135deg, #FF7300 0%, #E65C00 100%)',
+              color: '#FFFFFF',
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: isUpdating ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'opacity 0.2s',
+              opacity: isUpdating ? 0.7 : 1,
+              letterSpacing: '0.02em',
+              boxShadow: isUpdating ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+            }}
+            onMouseEnter={e => { if (!isUpdating) e.currentTarget.style.opacity = '0.9' }}
+            onMouseLeave={e => { if (!isUpdating) e.currentTarget.style.opacity = '1' }}
+          >
+            {isUpdating ? (
+              <RefreshCw size={18} style={{ animation: 'spin 0.6s linear infinite' }} />
+            ) : (
+              <Play size={18} />
+            )}
+            {isUpdating ? 'Đang cập nhật...' : 'BẮT ĐẦU LÀM'}
+          </button>
+        )}
+        {isInProgress && order.ordertype === 'Giao hàng' && (
+          <button
+            onClick={() => onUpdateStatus(order.orderid, 'Đang giao')}
+            disabled={isUpdating}
+            style={{
+              width: '100%',
+              padding: '16px 0',
+              borderRadius: 14,
+              border: 'none',
+              background: isUpdating ? '#CBD5E0' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+              color: '#FFFFFF',
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: isUpdating ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transition: 'opacity 0.2s',
+              opacity: isUpdating ? 0.7 : 1,
+              letterSpacing: '0.02em',
+              boxShadow: isUpdating ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+            }}
+            onMouseEnter={e => { if (!isUpdating) e.currentTarget.style.opacity = '0.9' }}
+            onMouseLeave={e => { if (!isUpdating) e.currentTarget.style.opacity = '1' }}
+          >
+            {isUpdating ? 'Đang cập nhật...' : 'GIAO CHO SHIPPER'}
+          </button>
+        )}
+        {isInProgress && (order.ordertype === 'Tại chỗ' || !order.ordertype) && (
+          <button
+            onClick={() => onUpdateStatus(order.orderid, 'Hoàn thành')}
+            disabled={isUpdating}
+            style={{
+              width: '100%',
+              padding: '16px 0',
+              borderRadius: 14,
+              border: 'none',
               background: isUpdating ? '#CBD5E0' : 'linear-gradient(135deg, #f06192 0%, #E84D7A 100%)',
               color: '#FFFFFF',
               fontSize: 16,
@@ -353,79 +415,6 @@ const KDSOrderCard: React.FC<KDSOrderCardProps> = ({ order, onUpdateStatus, isUp
             onMouseEnter={e => { if (!isUpdating) e.currentTarget.style.opacity = '0.9' }}
             onMouseLeave={e => { if (!isUpdating) e.currentTarget.style.opacity = '1' }}
           >
-            {isUpdating ? (
-              <RefreshCw size={18} style={{ animation: 'spin 0.6s linear infinite' }} />
-            ) : (
-              <Play size={18} />
-            )}
-            {isUpdating ? 'Đang cập nhật...' : 'NHẬN ĐƠN'}
-          </button>
-        )}
-        {isInProgress && (
-          <button
-            onClick={() => onUpdateStatus(order.orderid, 'Đang giao')}
-            disabled={isUpdating}
-            style={{
-              width: '100%',
-              padding: '16px 0',
-              borderRadius: 14,
-              border: 'none',
-              background: isUpdating ? '#CBD5E0' : 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)',
-              color: '#FFFFFF',
-              fontSize: 16,
-              fontWeight: 800,
-              cursor: isUpdating ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              transition: 'opacity 0.2s',
-              opacity: isUpdating ? 0.7 : 1,
-              letterSpacing: '0.02em',
-              boxShadow: isUpdating ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-            onMouseEnter={e => { if (!isUpdating) e.currentTarget.style.opacity = '0.9' }}
-            onMouseLeave={e => { if (!isUpdating) e.currentTarget.style.opacity = '1' }}
-          >
-            {isUpdating ? (
-              <RefreshCw size={18} style={{ animation: 'spin 0.6s linear infinite' }} />
-            ) : (
-              <Play size={18} />
-            )}
-            {isUpdating ? 'Đang cập nhật...' : 'GIAO HÀNG'}
-          </button>
-        )}
-        {isShipping && (
-          <button
-            onClick={() => onUpdateStatus(order.orderid, 'Hoàn thành')}
-            disabled={isUpdating}
-            style={{
-              width: '100%',
-              padding: '16px 0',
-              borderRadius: 14,
-              border: 'none',
-              background: isUpdating ? '#CBD5E0' : 'linear-gradient(135deg, #06A77D 0%, #00A869 100%)',
-              color: '#FFFFFF',
-              fontSize: 16,
-              fontWeight: 800,
-              cursor: isUpdating ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              transition: 'opacity 0.2s',
-              opacity: isUpdating ? 0.7 : 1,
-              letterSpacing: '0.02em',
-              boxShadow: isUpdating ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-            onMouseEnter={e => { if (!isUpdating) e.currentTarget.style.opacity = '0.9' }}
-            onMouseLeave={e => { if (!isUpdating) e.currentTarget.style.opacity = '1' }}
-          >
-            {isUpdating ? (
-              <RefreshCw size={18} style={{ animation: 'spin 0.6s linear infinite' }} />
-            ) : (
-              <CheckSquare size={18} />
-            )}
             {isUpdating ? 'Đang cập nhật...' : 'HOÀN THÀNH'}
           </button>
         )}
@@ -474,12 +463,12 @@ const StaffDashboard: React.FC = () => {
     if (!userBranchId) return
     if (!silent) setLoading(true)
     try {
-      // 1. Orders đang hoạt động: Chờ + Đang làm
+      // 1. Orders đang hoạt động: Chờ + Đang làm (Đơn giao hàng "Đang giao" sẽ biến mất khỏi dashboard)
       const { data: activeOrdersRaw, error: activeErr } = await supabase
         .from('orders')
-        .select('orderid, orderdate, status, finalamount')
+        .select('orderid, orderdate, status, ordertype, finalamount')
         .eq('branchid', userBranchId)
-        .in('status', ['Chờ xác nhận', 'Đang làm', 'Đang giao'])
+        .in('status', ['Chờ xác nhận', 'Đang làm'])
         .order('orderdate', { ascending: true })
 
       if (activeErr) throw activeErr
@@ -515,6 +504,7 @@ const StaffDashboard: React.FC = () => {
             orderid: o.orderid,
             orderdate: o.orderdate,
             status: o.status,
+            ordertype: o.ordertype as 'Tại chỗ' | 'Giao hàng',
             finalamount: o.finalamount,
             items: detailsMap[o.orderid] || []
           })
@@ -534,7 +524,7 @@ const StaffDashboard: React.FC = () => {
 
       const cho = (todayOrders || []).filter((o: any) => o.status === 'Chờ xác nhận').length
       const dangLam = (todayOrders || []).filter((o: any) => o.status === 'Đang làm').length
-      const xongHomNay = (todayOrders || []).filter((o: any) => o.status === 'Hoàn thành').length
+      const xongHomNay = (todayOrders || []).filter((o: any) => o.status === 'Hoàn thành' || o.status === 'Đang giao').length
 
       // 4. Số món hết hàng tại quán
       const { data: hetHangData } = await supabase
@@ -994,7 +984,7 @@ const AdminManagerDashboard: React.FC = () => {
 
     const totalOrders = filteredOrders.length
     const processingOrders = filteredOrders.filter(
-      o => o.status === 'Chờ xác nhận' || o.status === 'Đang làm' || o.status === 'Đang giao'
+      o => o.status === 'Chờ xác nhận' || o.status === 'Đang làm'
     ).length
     const completedOrders = filteredOrders.filter(o => o.status === 'Hoàn thành').length
     const totalRevenue = filteredOrders

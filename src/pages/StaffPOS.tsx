@@ -550,6 +550,7 @@ export const StaffPOS: React.FC = () => {
   const discountAmount = appliedVoucher?.discountAmount || 0
   const shippingAmount = orderType === 'Giao hàng' ? shippingFee : 0
   const finalAmount = Math.max(0, totalAmount - discountAmount + shippingAmount)
+  const isDeliveryMissingInfo = orderType === 'Giao hàng' && (!customerPhone.trim() || !deliveryAddress)
 
   const handleSubmitOrder = async () => {
     if (cartItems.length === 0) {
@@ -558,8 +559,12 @@ export const StaffPOS: React.FC = () => {
     }
 
     if (orderType === 'Giao hàng') {
-      if (!deliveryAddress || isOutOfServiceArea) {
-        setToast({ type: 'error', message: 'Vui lòng chọn địa chỉ giao hàng hợp lệ' })
+      if (!customerPhone.trim() || !deliveryAddress) {
+        setToast({ type: 'error', message: 'Vui lòng nhập SĐT và địa chỉ để giao hàng' })
+        return
+      }
+      if (isOutOfServiceArea) {
+        setToast({ type: 'error', message: 'Địa chỉ giao hàng ngoài vùng phục vụ' })
         return
       }
     }
@@ -584,7 +589,9 @@ export const StaffPOS: React.FC = () => {
         paymentmethod: paymentMethod,
         ordertype: orderType,
         note: orderNote || undefined,
-        address_detail: orderType === 'Giao hàng' ? deliveryAddress?.address_detail : null,
+        address_detail: orderType === 'Giao hàng'
+          ? `[SĐT: ${customerPhone.trim()}] ${deliveryAddress?.address_detail || ''}`.trim()
+          : null,
         customer_latitude: orderType === 'Giao hàng' ? deliveryAddress?.customer_latitude : null,
         customer_longitude: orderType === 'Giao hàng' ? deliveryAddress?.customer_longitude : null,
         city: orderType === 'Giao hàng' ? deliveryAddress?.city : null,
@@ -681,24 +688,35 @@ export const StaffPOS: React.FC = () => {
       <div style={{ flex: '1', overflowY: 'auto', padding: '24px', backgroundColor: '#FAFAFA' }}>
         {/* ─── CUSTOMER SEARCH ─── */}
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: GRAY_TEXT, marginBottom: '8px' }}>
-            Số điện thoại khách hàng
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: GRAY_TEXT }}>
+              Số điện thoại khách hàng
+            </label>
+            {orderType === 'Giao hàng' && (
+              <span style={{ fontSize: '10px', fontWeight: '700', color: '#f06192', backgroundColor: '#fff0f5', padding: '2px 7px', borderRadius: '6px', border: '1px solid #f06192' }}>
+                BẮT BUỘC
+              </span>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
               type="text"
-              placeholder="Nhập SĐT..."
+              placeholder={orderType === 'Giao hàng' ? 'Nhập SĐT để giao hàng...' : 'Nhập SĐT...'}
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearchCustomer()}
+              className={orderType === 'Giao hàng' && !customerPhone.trim() ? 'delivery-required-field' : ''}
               style={{
                 flex: 1,
                 padding: '10px 12px',
-                border: `1px solid #E8E8E8`,
+                border: orderType === 'Giao hàng' && !customerPhone.trim()
+                  ? `2px solid #f06192`
+                  : `1px solid #E8E8E8`,
                 borderRadius: '12px',
                 fontSize: '13px',
                 outline: 'none',
-                backgroundColor: '#FFFFFF'
+                backgroundColor: '#FFFFFF',
+                transition: 'border-color 0.2s'
               }}
             />
             <button
@@ -962,9 +980,14 @@ export const StaffPOS: React.FC = () => {
         {/* DELIVERY ADDRESS INPUT - CONDITIONAL RENDERING */}
         {orderType === 'Giao hàng' && (
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: GRAY_TEXT, marginBottom: '8px' }}>
-              Địa chỉ giao hàng
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: GRAY_TEXT }}>
+                Địa chỉ giao hàng
+              </label>
+              <span style={{ fontSize: '10px', fontWeight: '700', color: '#f06192', backgroundColor: '#fff0f5', padding: '2px 7px', borderRadius: '6px', border: '1px solid #f06192' }}>
+                BẮT BUỘC
+              </span>
+            </div>
 
             <DeliveryAddressInput
               branchLatitude={branchCoordinates?.latitude || 0}
@@ -1088,12 +1111,12 @@ export const StaffPOS: React.FC = () => {
         {/* CHECKOUT BUTTON - DISABLED IF OUT OF SERVICE AREA */}
         <button
           onClick={handleSubmitOrder}
-          disabled={cartItems.length === 0 || isSubmitting || isOutOfServiceArea}
+          disabled={cartItems.length === 0 || isSubmitting || isOutOfServiceArea || isDeliveryMissingInfo}
           style={{
             width: '100%',
             padding: '14px',
             backgroundColor:
-              cartItems.length === 0 || isSubmitting || isOutOfServiceArea
+              cartItems.length === 0 || isSubmitting || isOutOfServiceArea || isDeliveryMissingInfo
                 ? '#DDD'
                 : PINK_PRIMARY,
             color: '#FFFFFF',
@@ -1101,19 +1124,21 @@ export const StaffPOS: React.FC = () => {
             borderRadius: '12px',
             fontSize: '14px',
             fontWeight: '700',
-            cursor: cartItems.length === 0 || isSubmitting || isOutOfServiceArea ? 'not-allowed' : 'pointer',
+            cursor: cartItems.length === 0 || isSubmitting || isOutOfServiceArea || isDeliveryMissingInfo ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s'
           }}
           onMouseEnter={(e) => {
-            if (cartItems.length > 0 && !isSubmitting && !isOutOfServiceArea) {
+            if (cartItems.length > 0 && !isSubmitting && !isOutOfServiceArea && !isDeliveryMissingInfo) {
               e.currentTarget.style.backgroundColor = '#E64B7F'
             }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = PINK_PRIMARY
+            if (!isDeliveryMissingInfo && !isOutOfServiceArea) {
+              e.currentTarget.style.backgroundColor = PINK_PRIMARY
+            }
           }}
         >
-          {isSubmitting ? 'Đang xử lý...' : isOutOfServiceArea ? 'Ngoài vùng phục vụ' : 'CHỐT ĐƠN & THU TIỀN'}
+          {isSubmitting ? 'Đang xử lý...' : isOutOfServiceArea ? 'Ngoài vùng phục vụ' : isDeliveryMissingInfo ? 'Nhập SĐT & địa chỉ giao hàng' : 'CHỐT ĐƠN & THU TIỀN'}
         </button>
       </div>
 

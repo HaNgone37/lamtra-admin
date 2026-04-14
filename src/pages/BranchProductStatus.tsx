@@ -74,7 +74,7 @@ export default function BranchProductStatus({ branchId, branchName }: BranchProd
       }
     } catch (error) {
       console.error('Error loading statuses:', error)
-      showToast('Lỗi khi tải dữ liệu', 'error')
+      showToast('Lß╗ùi khi tß║úi dß╗» liß╗çu', 'error')
     } finally {
       setLoading(false)
     }
@@ -119,13 +119,13 @@ export default function BranchProductStatus({ branchId, branchName }: BranchProd
 
       showToast(
         newStatus 
-          ? 'Đã kích hoạt sản phẩm' 
-          : 'Đã vô hiệu hóa sản phẩm',
+          ? '─É├ú k├¡ch hoß║ít sß║ún phß║⌐m' 
+          : '─É├ú v├┤ hiß╗çu h├│a sß║ún phß║⌐m',
         'success'
       )
     } catch (error) {
       console.error('Error toggling product:', error)
-      showToast('Lỗi khi cập nhật trạng thái', 'error')
+      showToast('Lß╗ùi khi cß║¡p nhß║¡t trß║íng th├íi', 'error')
     }
   }
 
@@ -156,10 +156,10 @@ export default function BranchProductStatus({ branchId, branchName }: BranchProd
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ color: colors.text, fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
-          Thực đơn chi nhánh
+          Thß╗▒c ─æ╞ín chi nh├ính
         </h1>
         <p style={{ color: colors.textLight }}>
-          Quản lý trạng thái sản phẩm tại: <strong>{branchName}</strong>
+          Quß║ún l├╜ trß║íng th├íi sß║ún phß║⌐m tß║íi: <strong>{branchName}</strong>
         </p>
       </div>
 
@@ -169,7 +169,7 @@ export default function BranchProductStatus({ branchId, branchName }: BranchProd
           <Search size={18} style={{ color: colors.textLight }} />
           <input
             type="text"
-            placeholder="Tìm kiếm sản phẩm..."
+            placeholder="T├¼m kiß║┐m sß║ún phß║⌐m..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -187,11 +187,11 @@ export default function BranchProductStatus({ branchId, branchName }: BranchProd
         {/* Products Grid */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-            Đang tải...
+            ─Éang tß║úi...
           </div>
         ) : filteredStatuses.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-            Không có sản phẩm
+            Kh├┤ng c├│ sß║ún phß║⌐m
           </div>
         ) : (
           <div style={{
@@ -229,7 +229,7 @@ export default function BranchProductStatus({ branchId, branchName }: BranchProd
                       borderRadius: '50%',
                       backgroundColor: status.available ? colors.success : colors.error
                     }} />
-                    {status.available ? 'Còn phục vụ' : 'Hết món'}
+                    {status.available ? 'C├▓n phß╗Ñc vß╗Ñ' : 'Hß║┐t m├│n'}
                   </div>
                 </div>
                 <button
@@ -242,7 +242,7 @@ export default function BranchProductStatus({ branchId, branchName }: BranchProd
                     display: 'flex',
                     alignItems: 'center'
                   }}
-                  title={status.available ? 'Tắt phục vụ' : 'Bật phục vụ'}
+                  title={status.available ? 'Tß║»t phß╗Ñc vß╗Ñ' : 'Bß║¡t phß╗Ñc vß╗Ñ'}
                 >
                   {status.available ? (
                     <ToggleRight size={28} color={colors.success} />

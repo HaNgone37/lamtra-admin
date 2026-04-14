@@ -41,10 +41,10 @@ interface MenuItem {
 }
 
 /**
- * Sidebar Component - Phân quyền theo RBAC
- * Super Admin: Tất cả menu
- * Branch Manager: Tổng quan, Đơn hàng, Thực đơn, Nhân sự, Kho
- * Staff: Tổng quan, Đơn hàng
+ * Sidebar Component - Ph├ón quyß╗ün theo RBAC
+ * Super Admin: Tß║Ñt cß║ú menu
+ * Branch Manager: Tß╗òng quan, ─É╞ín h├áng, Thß╗▒c ─æ╞ín, Nh├ón sß╗▒, Kho
+ * Staff: Tß╗òng quan, ─É╞ín h├áng
  */
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
@@ -52,35 +52,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentPage,
   onPageChange,
   userRole = 'Staff',
-  branchName = 'Chi nhánh',
+  branchName = 'Chi nh├ính',
   onLogout
 }) => {
-  // Đọc role từ localStorage (được set trong AuthContext.login)
+  // ─Éß╗ìc role tß╗½ localStorage (─æ╞░ß╗úc set trong AuthContext.login)
   const role = localStorage.getItem('userRole') || userRole
   
   // Check if user is Super Admin
   const isSuperAdmin = role.toLowerCase().includes('super')
 
-  // Menu items toàn bộ
+  // Menu items to├án bß╗Ö
   const allMenuItems: MenuItem[] = [
     {
       id: 'dashboard',
-      label: 'Tổng Quan',
+      label: 'Tß╗òng Quan',
       icon: <Home size={20} strokeWidth={2} />,
     },
     {
       id: 'orders',
-      label: 'Đơn Hàng',
+      label: '─É╞ín H├áng',
       icon: <ShoppingCart size={20} strokeWidth={2} />,
     },
     {
       id: 'products',
-      label: 'Thực Đơn',
+      label: 'Thß╗▒c ─É╞ín',
       icon: <Package size={20} strokeWidth={2} />,
     },
     {
       id: 'employees',
-      label: 'Nhân Sự',
+      label: 'Nh├ón Sß╗▒',
       icon: <Users size={20} strokeWidth={2} />,
     },
     {
@@ -88,20 +88,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Kho',
       icon: <Warehouse size={20} strokeWidth={2} />,
     },
-    // Chỉ show cho Super Admin
+    // Chß╗ë show cho Super Admin
     {
       id: 'branches',
-      label: 'Chi Nhánh',
+      label: 'Chi Nh├ính',
       icon: <MapPin size={20} strokeWidth={2} />,
     },
     {
       id: 'analytics',
-      label: 'Phân Tích',
+      label: 'Ph├ón T├¡ch',
       icon: <BarChart3 size={20} strokeWidth={2} />,
     },
     {
       id: 'news',
-      label: 'Bài Viết',
+      label: 'B├ái Viß║┐t',
       icon: <FileText size={20} strokeWidth={2} />,
     },
     {
@@ -111,13 +111,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ]
 
-  // Lọc menu theo role
+  // Lß╗ìc menu theo role
   const visibleMenu = useMemo(() => {
     if (isSuperAdmin) {
-      // Super Admin xem tất cả
+      // Super Admin xem tß║Ñt cß║ú
       return allMenuItems
     } else {
-      // Branch Manager và Staff - chỉ xem: Tổng Quan, Đơn Hàng, Thực Đơn, Nhân Sự, Kho
+      // Branch Manager v├á Staff - chß╗ë xem: Tß╗òng Quan, ─É╞ín H├áng, Thß╗▒c ─É╞ín, Nh├ón Sß╗▒, Kho
       return allMenuItems.filter(item => 
         ['dashboard', 'orders', 'products', 'employees', 'inventory'].includes(item.id)
       )
@@ -149,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-6 py-8 border-b border-gray-100 flex flex-col items-center space-y-4">
           <img
             src="https://tpwgbutlqmubdnnnfhdp.supabase.co/storage/v1/object/public/lamtra-media/products/LAMTRA_WP_FOOTER_LOGO-1.png"
-            alt="LAM TRÀ"
+            alt="LAM TR├Ç"
             className="w-32 h-32 object-contain"
           />
 
@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="w-full p-3 rounded-lg border"
               style={{ backgroundColor: '#F4F7FE', borderColor: '#D1E0FF' }}
             >
-              <p className="text-xs text-gray-600 font-medium mb-1">Chi nhánh</p>
+              <p className="text-xs text-gray-600 font-medium mb-1">Chi nh├ính</p>
               <p
                 className="text-sm font-bold"
                 style={{ color: '#4318FF' }}
@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <nav className="flex-1 px-4 py-6 overflow-y-auto space-y-2">
           {visibleMenu.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
-              <p className="text-sm">Không có menu</p>
+              <p className="text-sm">Kh├┤ng c├│ menu</p>
             </div>
           ) : (
             visibleMenu.map((item) => (
@@ -224,7 +224,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
           >
             <LogOut size={20} strokeWidth={2} style={{ color: '#FFFFFF' }} />
-            <span>Đăng xuất</span>
+            <span>─É─âng xuß║Ñt</span>
           </button>
         </div>
       </aside>

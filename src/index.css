@@ -52,6 +52,14 @@ body {
 }
 
 /* Animations */
+@keyframes required-pulse {
+  0%, 100% { border-color: #f06192; box-shadow: 0 0 0 0 rgba(240, 97, 146, 0); }
+  50% { border-color: #c2185b; box-shadow: 0 0 0 4px rgba(240, 97, 146, 0.18); }
+}
+.delivery-required-field {
+  animation: required-pulse 1.8s ease-in-out infinite;
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

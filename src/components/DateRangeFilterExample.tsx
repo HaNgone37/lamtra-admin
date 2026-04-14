@@ -38,13 +38,13 @@ export const DateRangeFilterExample: React.FC = () => {
       setResults([
         {
           id: 1,
-          name: 'Đơn hàng #001',
+          name: '─É╞ín h├áng #001',
           date: dateRange.startDate,
           amount: 150000
         },
         {
           id: 2,
-          name: 'Đơn hàng #002',
+          name: '─É╞ín h├áng #002',
           date: dateRange.endDate,
           amount: 250000
         }
@@ -61,16 +61,16 @@ export const DateRangeFilterExample: React.FC = () => {
       {/* Title */}
       <div>
         <h1 className="text-3xl font-bold mb-2" style={{ color: '#4318FF' }}>
-          Ví dụ sử dụng DateRangeFilter
+          V├¡ dß╗Ñ sß╗¡ dß╗Ñng DateRangeFilter
         </h1>
         <p style={{ color: '#8F9CB8' }}>
-          Thay đổi khoảng thời gian để xem dữ liệu cập nhật
+          Thay ─æß╗òi khoß║úng thß╗¥i gian ─æß╗â xem dß╗» liß╗çu cß║¡p nhß║¡t
         </p>
       </div>
 
       {/* Date Range Filter Component */}
       <DateRangeFilter
-        label="Chọn khoảng thời gian xem doanh thu"
+        label="Chß╗ìn khoß║úng thß╗¥i gian xem doanh thu"
         onDateRangeChange={handleDateRangeChange}
         showQuickFilters={true}
       />
@@ -82,7 +82,7 @@ export const DateRangeFilterExample: React.FC = () => {
           style={{ backgroundColor: '#EDFCF3', border: '1px solid #C8F7DC' }}
         >
           <h3 className="font-semibold mb-2" style={{ color: '#00A869' }}>
-            ✅ Dữ liệu được lọc thành công
+            Γ£à Dß╗» liß╗çu ─æ╞░ß╗úc lß╗ìc th├ánh c├┤ng
           </h3>
           <p style={{ color: '#047857', fontSize: '14px' }}>
             <strong>From:</strong> {selectedRange.startDate}
@@ -97,7 +97,7 @@ export const DateRangeFilterExample: React.FC = () => {
       {loading && (
         <div className="text-center py-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin mb-4"></div>
-          <p style={{ color: '#8F9CB8' }}>Đang tải dữ liệu...</p>
+          <p style={{ color: '#8F9CB8' }}>─Éang tß║úi dß╗» liß╗çu...</p>
         </div>
       )}
 
@@ -113,13 +113,13 @@ export const DateRangeFilterExample: React.FC = () => {
                   STT
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-bold" style={{ color: '#2B3674' }}>
-                  Tên
+                  T├¬n
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-bold" style={{ color: '#2B3674' }}>
-                  Ngày
+                  Ng├áy
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-bold" style={{ color: '#2B3674' }}>
-                  Số tiền
+                  Sß╗æ tiß╗ün
                 </th>
               </tr>
             </thead>
@@ -156,7 +156,7 @@ export const DateRangeFilterExample: React.FC = () => {
         style={{ backgroundColor: '#EBF3FF', border: '1px solid #D1E0FF' }}
       >
         <h3 className="font-semibold mb-4" style={{ color: '#4318FF' }}>
-          📚 Cách sử dụng:
+          ≡ƒôÜ C├ích sß╗¡ dß╗Ñng:
         </h3>
         <ol className="space-y-2 text-sm" style={{ color: '#2B3674' }}>
           <li>
@@ -166,22 +166,22 @@ export const DateRangeFilterExample: React.FC = () => {
             </pre>
           </li>
           <li>
-            <strong>2. Sử dụng trong component:</strong>
+            <strong>2. Sß╗¡ dß╗Ñng trong component:</strong>
             <pre className="bg-white px-3 py-2 rounded mt-1 text-xs overflow-x-auto">
               {`const [dateRange, setDateRange] = useState<DateRange | null>(null)
 
 <DateRangeFilter 
   onDateRangeChange={(range) => {
     setDateRange(range)
-    // Gọi API với range.startDate và range.endDate
+    // Gß╗ìi API vß╗¢i range.startDate v├á range.endDate
   }}
-  label="Chọn khoảng thời gian"
+  label="Chß╗ìn khoß║úng thß╗¥i gian"
 />
 `}
             </pre>
           </li>
           <li>
-            <strong>3. Gửi API:</strong>
+            <strong>3. Gß╗¡i API:</strong>
             <pre className="bg-white px-3 py-2 rounded mt-1 text-xs overflow-x-auto">
               {`const { data } = await supabase
   .from('orders')

@@ -3,13 +3,13 @@ import { Recipe, Ingredient, Product } from '@/types'
 
 /**
  * ============================================
- * 🏭 INVENTORY SERVICE - KHO HÀNG
+ * ≡ƒÅ¡ INVENTORY SERVICE - KHO H├ÇNG
  * ============================================
  * 
- * Service layer cho tất cả các bảng liên quan:
- * - ingredients (danh mục nguyên liệu)
- * - branchinventory (tồn kho chi nhánh)
- * - recipes (công thức)
+ * Service layer cho tß║Ñt cß║ú c├íc bß║úng li├¬n quan:
+ * - ingredients (danh mß╗Ñc nguy├¬n liß╗çu)
+ * - branchinventory (tß╗ôn kho chi nh├ính)
+ * - recipes (c├┤ng thß╗⌐c)
  */
 
 // ============ TYPES ============
@@ -35,7 +35,7 @@ export interface Branch {
 
 export const ingredientService = {
   /**
-   * Lấy tất cả nguyên liệu (danh mục)
+   * Lß║Ñy tß║Ñt cß║ú nguy├¬n liß╗çu (danh mß╗Ñc)
    */
   async getIngredients(): Promise<Ingredient[]> {
     try {
@@ -47,13 +47,13 @@ export const ingredientService = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('❌ Error fetching ingredients:', error)
+      console.error('Γ¥î Error fetching ingredients:', error)
       throw error
     }
   },
 
   /**
-   * Tạo nguyên liệu mới (chỉ Super Admin)
+   * Tß║ío nguy├¬n liß╗çu mß╗¢i (chß╗ë Super Admin)
    */
   async createIngredient(ingredient: Omit<Ingredient, 'ingredientid'>): Promise<Ingredient> {
     try {
@@ -66,13 +66,13 @@ export const ingredientService = {
       if (error) throw error
       return data
     } catch (error) {
-      console.error('❌ Error creating ingredient:', error)
+      console.error('Γ¥î Error creating ingredient:', error)
       throw error
     }
   },
 
   /**
-   * Cập nhật nguyên liệu (chỉ Super Admin)
+   * Cß║¡p nhß║¡t nguy├¬n liß╗çu (chß╗ë Super Admin)
    */
   async updateIngredient(ingredientId: string, updates: Partial<Ingredient>): Promise<Ingredient> {
     try {
@@ -86,13 +86,13 @@ export const ingredientService = {
       if (error) throw error
       return data
     } catch (error) {
-      console.error('❌ Error updating ingredient:', error)
+      console.error('Γ¥î Error updating ingredient:', error)
       throw error
     }
   },
 
   /**
-   * Xóa nguyên liệu (chỉ Super Admin)
+   * X├│a nguy├¬n liß╗çu (chß╗ë Super Admin)
    */
   async deleteIngredient(ingredientId: string): Promise<void> {
     try {
@@ -103,7 +103,7 @@ export const ingredientService = {
 
       if (error) throw error
     } catch (error) {
-      console.error('❌ Error deleting ingredient:', error)
+      console.error('Γ¥î Error deleting ingredient:', error)
       throw error
     }
   },
@@ -113,7 +113,7 @@ export const ingredientService = {
 
 export const branchInventoryService = {
   /**
-   * Lấy tồn kho của TẤT CẢ chi nhánh (chỉ Super Admin)
+   * Lß║Ñy tß╗ôn kho cß╗ºa Tß║ñT Cß║ó chi nh├ính (chß╗ë Super Admin)
    */
   async getAllBranchInventory(): Promise<BranchInventory[]> {
     try {
@@ -132,32 +132,32 @@ export const branchInventoryService = {
         ingredient: item.ingredients as any,
       }))
     } catch (error) {
-      console.error('❌ Error fetching all branch inventory:', error)
+      console.error('Γ¥î Error fetching all branch inventory:', error)
       throw error
     }
   },
 
   /**
-   * Lấy tồn kho của 1 chi nhánh cụ thể
-   * ⚠️ DEBUG: branchId từ localStorage là STRING, cần ép thành NUMBER!
+   * Lß║Ñy tß╗ôn kho cß╗ºa 1 chi nh├ính cß╗Ñ thß╗â
+   * ΓÜá∩╕Å DEBUG: branchId tß╗½ localStorage l├á STRING, cß║ºn ├⌐p th├ánh NUMBER!
    */
   async getBranchInventoryByBranch(branchId: string): Promise<BranchInventory[]> {
     try {
-      // ===== BƯỚC 1: Ép kiểu branchId =====
+      // ===== B╞»ß╗ÜC 1: ├ëp kiß╗âu branchId =====
       const branchIdNum = Number(branchId)
-      console.log('🔍 [getBranchInventoryByBranch] START')
-      console.log('📥 branchId input (string):', branchId)
-      console.log('📤 branchId converted (number):', branchIdNum)
-      console.log('⚠️  typeof branchIdNum:', typeof branchIdNum)
+      console.log('≡ƒöì [getBranchInventoryByBranch] START')
+      console.log('≡ƒôÑ branchId input (string):', branchId)
+      console.log('≡ƒôñ branchId converted (number):', branchIdNum)
+      console.log('ΓÜá∩╕Å  typeof branchIdNum:', typeof branchIdNum)
 
-      // ===== BƯỚC 2: Fetch tồn kho + JOIN ingredients =====
+      // ===== B╞»ß╗ÜC 2: Fetch tß╗ôn kho + JOIN ingredients =====
       const { data, error } = await supabase
         .from('branchinventory')
         .select('*, ingredients:ingredients(name, unit, baseprice, minstocklevel)')
-        .eq('branchid', branchIdNum) // 🔑 ĐÂY LÀ KHÓA: dùng NUMBER, không STRING!
+        .eq('branchid', branchIdNum) // ≡ƒöæ ─É├éY L├Ç KH├ôA: d├╣ng NUMBER, kh├┤ng STRING!
         .order('ingredientid', { ascending: true })
 
-      console.log('📊 Supabase response:', {
+      console.log('≡ƒôè Supabase response:', {
         errorCode: error?.code,
         errorMessage: error?.message,
         dataLength: data?.length || 0,
@@ -166,9 +166,9 @@ export const branchInventoryService = {
 
       if (error) throw error
 
-      // ===== BƯỚC 3: Map dữ liệu =====
+      // ===== B╞»ß╗ÜC 3: Map dß╗» liß╗çu =====
       const mappedData = (data || []).map((item: any) => {
-        console.log('🔗 Mapping item:', {
+        console.log('≡ƒöù Mapping item:', {
           branchid: item.branchid,
           ingredientid: item.ingredientid,
           currentstock: item.currentstock,
@@ -183,16 +183,16 @@ export const branchInventoryService = {
         }
       })
 
-      console.log('✅ [getBranchInventoryByBranch] SUCCESS - returned', mappedData.length, 'items')
+      console.log('Γ£à [getBranchInventoryByBranch] SUCCESS - returned', mappedData.length, 'items')
       return mappedData
     } catch (error) {
-      console.error('❌ [getBranchInventoryByBranch] ERROR:', error)
+      console.error('Γ¥î [getBranchInventoryByBranch] ERROR:', error)
       throw error
     }
   },
 
   /**
-   * Cập nhật stock của nguyên liệu
+   * Cß║¡p nhß║¡t stock cß╗ºa nguy├¬n liß╗çu
    */
   async updateStock(branchId: string, ingredientId: string, currentstock: number): Promise<BranchInventory> {
     try {
@@ -207,13 +207,13 @@ export const branchInventoryService = {
       if (error) throw error
       return data
     } catch (error) {
-      console.error('❌ Error updating stock:', error)
+      console.error('Γ¥î Error updating stock:', error)
       throw error
     }
   },
 
   /**
-   * Cập nhật min stock level (ngưỡng cảnh báo)
+   * Cß║¡p nhß║¡t min stock level (ng╞░ß╗íng cß║únh b├ío)
    */
   async updateMinStockLevel(branchId: string, ingredientId: string, minstocklevel: number): Promise<BranchInventory> {
     try {
@@ -228,13 +228,13 @@ export const branchInventoryService = {
       if (error) throw error
       return data
     } catch (error) {
-      console.error('❌ Error updating min stock level:', error)
+      console.error('Γ¥î Error updating min stock level:', error)
       throw error
     }
   },
 
   /**
-   * Thêm nguyên liệu vào tồn kho của chi nhánh
+   * Th├¬m nguy├¬n liß╗çu v├áo tß╗ôn kho cß╗ºa chi nh├ính
    */
   async addToInventory(branchId: string, ingredientId: string, currentstock: number, minstocklevel: number = 0): Promise<BranchInventory> {
     try {
@@ -254,7 +254,7 @@ export const branchInventoryService = {
       if (error) throw error
       return data
     } catch (error) {
-      console.error('❌ Error adding to inventory:', error)
+      console.error('Γ¥î Error adding to inventory:', error)
       throw error
     }
   },
@@ -264,8 +264,8 @@ export const branchInventoryService = {
 
 export const recipeService = {
   /**
-   * Lấy tất cả công thức với JOIN products và ingredients
-   * ✅ Sử dụng cột 'amount' (thay vì quantity)
+   * Lß║Ñy tß║Ñt cß║ú c├┤ng thß╗⌐c vß╗¢i JOIN products v├á ingredients
+   * Γ£à Sß╗¡ dß╗Ñng cß╗Öt 'amount' (thay v├¼ quantity)
    */
   async getRecipes(): Promise<Recipe[]> {
     try {
@@ -292,14 +292,14 @@ export const recipeService = {
         ingredient: item.ingredients as unknown as Ingredient,
       }))
     } catch (error) {
-      console.error('❌ Error fetching recipes:', error)
+      console.error('Γ¥î Error fetching recipes:', error)
       throw error
     }
   },
 
   /**
-   * Lấy công thức của sản phẩm cụ thể
-   * ✅ Sử dụng cột 'amount'
+   * Lß║Ñy c├┤ng thß╗⌐c cß╗ºa sß║ún phß║⌐m cß╗Ñ thß╗â
+   * Γ£à Sß╗¡ dß╗Ñng cß╗Öt 'amount'
    */
   async getRecipesByProduct(productId: string, sizeId?: number | string): Promise<Recipe[]> {
     try {
@@ -340,14 +340,14 @@ export const recipeService = {
         sizes: item.sizes as any,
       }))
     } catch (error) {
-      console.error('❌ Error fetching recipes by product:', error)
+      console.error('Γ¥î Error fetching recipes by product:', error)
       throw error
     }
   },
 
   /**
-   * Thêm công thức mới (chỉ Super Admin)
-   * ✅ Gửi 'amount' (không 'quantity')
+   * Th├¬m c├┤ng thß╗⌐c mß╗¢i (chß╗ë Super Admin)
+   * Γ£à Gß╗¡i 'amount' (kh├┤ng 'quantity')
    */
   async createRecipe(recipe: Omit<Recipe, 'recipeid'>): Promise<Recipe> {
     try {
@@ -379,14 +379,14 @@ export const recipeService = {
         ingredient: data.ingredients as unknown as Ingredient,
       }
     } catch (error) {
-      console.error('❌ Error creating recipe:', error)
+      console.error('Γ¥î Error creating recipe:', error)
       throw error
     }
   },
 
   /**
-   * Cập nhật công thức (chỉ Super Admin)
-   * ✅ Cập nhật 'amount' field
+   * Cß║¡p nhß║¡t c├┤ng thß╗⌐c (chß╗ë Super Admin)
+   * Γ£à Cß║¡p nhß║¡t 'amount' field
    */
   async updateRecipe(recipeId: string, updates: Partial<Recipe>): Promise<Recipe> {
     try {
@@ -420,13 +420,13 @@ export const recipeService = {
         ingredient: data.ingredients as unknown as Ingredient,
       }
     } catch (error) {
-      console.error('❌ Error updating recipe:', error)
+      console.error('Γ¥î Error updating recipe:', error)
       throw error
     }
   },
 
   /**
-   * Xóa công thức (chỉ Super Admin)
+   * X├│a c├┤ng thß╗⌐c (chß╗ë Super Admin)
    */
   async deleteRecipe(recipeId: string): Promise<void> {
     try {
@@ -437,7 +437,7 @@ export const recipeService = {
 
       if (error) throw error
     } catch (error) {
-      console.error('❌ Error deleting recipe:', error)
+      console.error('Γ¥î Error deleting recipe:', error)
       throw error
     }
   },
@@ -447,20 +447,20 @@ export const recipeService = {
 
 export const productService = {
   /**
-   * Lấy tất cả sản phẩm (cho dropdown trong recipes form)
+   * Lß║Ñy tß║Ñt cß║ú sß║ún phß║⌐m (cho dropdown trong recipes form)
    */
   async getProducts(): Promise<Product[]> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('productid, name')
-        .eq('status', 'Đang bán')
+        .eq('status', '─Éang b├ín')
         .order('name', { ascending: true })
 
       if (error) throw error
       return (data || []) as any
     } catch (error) {
-      console.error('❌ Error fetching products:', error)
+      console.error('Γ¥î Error fetching products:', error)
       throw error
     }
   },
@@ -470,7 +470,7 @@ export const productService = {
 
 export const branchService = {
   /**
-   * Lấy tất cả chi nhánh hoạt động
+   * Lß║Ñy tß║Ñt cß║ú chi nh├ính hoß║ít ─æß╗Öng
    */
   async getActiveBranches(): Promise<Branch[]> {
     try {
@@ -483,13 +483,13 @@ export const branchService = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('❌ Error fetching branches:', error)
+      console.error('Γ¥î Error fetching branches:', error)
       throw error
     }
   },
 
   /**
-   * Lấy chi nhánh cụ thể theo ID
+   * Lß║Ñy chi nh├ính cß╗Ñ thß╗â theo ID
    */
   async getBranchById(branchId: string): Promise<Branch | null> {
     try {
@@ -502,7 +502,7 @@ export const branchService = {
       if (error && error.code !== 'PGRST116') throw error
       return data || null
     } catch (error) {
-      console.error('❌ Error fetching branch:', error)
+      console.error('Γ¥î Error fetching branch:', error)
       throw error
     }
   },
@@ -512,10 +512,10 @@ export const branchService = {
 
 export const stockReceiptService = {
   /**
-   * Tạo phiếu nhập kho (stockreceipts + receiptdetails)
+   * Tß║ío phiß║┐u nhß║¡p kho (stockreceipts + receiptdetails)
    * 
-   * ✅ Không gửi receiptid (tự tăng)
-   * ✅ Sử dụng quantity (số lượng nhập) + amount (thành tiền)
+   * Γ£à Kh├┤ng gß╗¡i receiptid (tß╗▒ t─âng)
+   * Γ£à Sß╗¡ dß╗Ñng quantity (sß╗æ l╞░ß╗úng nhß║¡p) + amount (th├ánh tiß╗ün)
    */
   async createReceipt(
     branchId: number,
@@ -529,7 +529,7 @@ export const stockReceiptService = {
     try {
       const totalcost = items.reduce((sum, item) => sum + item.quantity * item.unitprice, 0)
 
-      // 1. Tạo stockreceipts record
+      // 1. Tß║ío stockreceipts record
       const { data: receiptData, error: receiptError } = await supabase
         .from('stockreceipts')
         .insert({
@@ -544,7 +544,7 @@ export const stockReceiptService = {
       if (receiptError) throw receiptError
       const receiptid = receiptData?.receiptid
 
-      // 2. Tạo receiptdetails records
+      // 2. Tß║ío receiptdetails records
       if (receiptid) {
         const detailsData = items.map(item => ({
           receiptid: receiptid,
@@ -561,16 +561,16 @@ export const stockReceiptService = {
         if (detailError) throw detailError
       }
 
-      console.log('✅ Receipt created successfully:', receiptid)
+      console.log('Γ£à Receipt created successfully:', receiptid)
       return { receiptid, totalcost }
     } catch (error) {
-      console.error('❌ Error creating receipt:', error)
+      console.error('Γ¥î Error creating receipt:', error)
       throw error
     }
   },
 
   /**
-   * Lấy chi tiết nhập từ receiptdetails
+   * Lß║Ñy chi tiß║┐t nhß║¡p tß╗½ receiptdetails
    */
   async getReceiptDetails(receiptId: number) {
     try {
@@ -591,7 +591,7 @@ export const stockReceiptService = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('❌ Error fetching receipt details:', error)
+      console.error('Γ¥î Error fetching receipt details:', error)
       throw error
     }
   },
@@ -601,10 +601,10 @@ export const stockReceiptService = {
 
 export const inventoryAuditService = {
   /**
-   * Tạo phiếu kiểm kê (inventoryaudits + auditdetails)
+   * Tß║ío phiß║┐u kiß╗âm k├¬ (inventoryaudits + auditdetails)
    * 
-   * ✅ Không gửi id hoặc auditid (tự tăng)
-   * ✅ Sử dụng systemstock (tồn hệ thống) + physicalstock (tồn thực tế)
+   * Γ£à Kh├┤ng gß╗¡i id hoß║╖c auditid (tß╗▒ t─âng)
+   * Γ£à Sß╗¡ dß╗Ñng systemstock (tß╗ôn hß╗ç thß╗æng) + physicalstock (tß╗ôn thß╗▒c tß║┐)
    */
   async createAudit(
     branchId: number | string,
@@ -622,7 +622,7 @@ export const inventoryAuditService = {
         0
       )
 
-      // 1. Tạo inventoryaudits record
+      // 1. Tß║ío inventoryaudits record
       const { data: auditData, error: auditError } = await supabase
         .from('inventoryaudits')
         .insert({
@@ -637,7 +637,7 @@ export const inventoryAuditService = {
       if (auditError) throw auditError
       const auditid = auditData?.auditid
 
-      // 2. Tạo auditdetails records
+      // 2. Tß║ío auditdetails records
       if (auditid) {
         const detailsData = items.map(item => ({
           auditid: auditid,
@@ -655,16 +655,16 @@ export const inventoryAuditService = {
         if (detailError) throw detailError
       }
 
-      console.log('✅ Audit created successfully:', auditid)
+      console.log('Γ£à Audit created successfully:', auditid)
       return { auditid, totaldifference }
     } catch (error) {
-      console.error('❌ Error creating audit:', error)
+      console.error('Γ¥î Error creating audit:', error)
       throw error
     }
   },
 
   /**
-   * Lấy chi tiết kiểm kê từ auditdetails
+   * Lß║Ñy chi tiß║┐t kiß╗âm k├¬ tß╗½ auditdetails
    */
   async getAuditDetails(auditId: number) {
     try {
@@ -686,9 +686,8 @@ export const inventoryAuditService = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('❌ Error fetching audit details:', error)
+      console.error('Γ¥î Error fetching audit details:', error)
       throw error
     }
   },
 }
-

@@ -27,6 +27,7 @@ interface SentimentStats {
   positive: number
   negative: number
   neutral: number
+  spam: number
 }
 
 const colors = {
@@ -45,6 +46,7 @@ const chartColors = {
   positive: '#05B75D',
   negative: '#F3685A',
   neutral: '#FEC90F',
+  spam: '#9CA3AF',
 }
 
 const MEMBERSHIP_COLORS = {
@@ -76,9 +78,11 @@ export default function AnalyticsPage() {
   const [totalRevenue, setTotalRevenue] = useState(0)
 
   // Sentiment tab
-  const [sentimentStats, setSentimentStats] = useState<SentimentStats>({ positive: 0, negative: 0, neutral: 0 })
+  const [sentimentStats, setSentimentStats] = useState<SentimentStats>({ positive: 0, negative: 0, neutral: 0, spam: 0 })
   const [reviews, setReviews] = useState<Review[]>([])
   const [aiInsight, setAiInsight] = useState('')
+  const [isUpdatingAI, setIsUpdatingAI] = useState(false)
+  const [sentimentFilter, setSentimentFilter] = useState<'all' | 'alert'>('all')
 
   // Loyal Customers tab
   const [loyalCustomers, setLoyalCustomers] = useState<LoyalCustomer[]>([])
@@ -163,10 +167,12 @@ export default function AnalyticsPage() {
       if (error) throw error
 
       // Count sentiments
-      const stats = { positive: 0, negative: 0, neutral: 0 }
+      const stats = { positive: 0, negative: 0, neutral: 0, spam: 0 }
       reviewsList?.forEach((review: any) => {
         const sentiment = review.sentiment?.toLowerCase() || 'neutral'
-        if (sentiment.includes('tích cực') || sentiment.includes('positive')) {
+        if (sentiment.includes('spam')) {
+          stats.spam++
+        } else if (sentiment.includes('tích cực') || sentiment.includes('positive')) {
           stats.positive++
         } else if (sentiment.includes('tiêu cực') || sentiment.includes('negative')) {
           stats.negative++
@@ -183,6 +189,112 @@ export default function AnalyticsPage() {
       addToast('Lỗi tải dữ liệu cảm xúc', 'error')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ===== AI Sentiment Update Handler =====
+  const handleUpdateAISentiment = async () => {
+    try {
+      setIsUpdatingAI(true)
+      const { supabase } = await import('@/utils/supabaseClient')
+
+      // Fetch reviews with 'Chưa phân tích' or NULL or 'Trung lập' (ALL to re-analyze)
+      const { data: unanalyzedReviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('reviewid, comment, rating')
+        .or('sentiment.is.null,sentiment.eq.Chưa phân tích,sentiment.eq.Trung lập')
+
+      if (reviewsError) throw reviewsError
+
+      // Fetch feedbacks with 'Chưa phân tích' or NULL or 'Trung lập'
+      const { data: unanalyzedFeedbacks, error: feedbacksError } = await supabase
+        .from('feedbacks')
+        .select('id, content')
+        .or('sentiment.is.null,sentiment.eq.Chưa phân tích,sentiment.eq.Trung lập')
+
+      if (feedbacksError) throw feedbacksError
+
+      let updatedCount = 0
+
+      // Process reviews
+      if (unanalyzedReviews && unanalyzedReviews.length > 0) {
+        for (const review of unanalyzedReviews) {
+          try {
+            // Call Supabase function
+            const { data: result, error: funcError } = await supabase.functions.invoke('analyze-sentiment', {
+              body: { text: review.comment },
+            })
+
+            if (funcError) throw funcError
+
+            const sentiment = result?.sentiment || 'Trung lập'
+
+            // Prepare update data
+            const updateData: any = { sentiment }
+
+            // Auto-hide Spam reviews
+            if (sentiment === 'Spam') {
+              updateData.is_visible = false
+            }
+
+            // Ensure 1-star reviews are visible even if marked negative
+            if (review.rating === 1) {
+              updateData.is_visible = true
+            }
+
+            // Update review
+            const { error: updateError } = await supabase
+              .from('reviews')
+              .update(updateData)
+              .eq('reviewid', review.reviewid)
+
+            if (updateError) throw updateError
+            updatedCount++
+          } catch (err) {
+            console.error('Error processing review', review.reviewid, err)
+          }
+        }
+      }
+
+      // Process feedbacks
+      if (unanalyzedFeedbacks && unanalyzedFeedbacks.length > 0) {
+        for (const feedback of unanalyzedFeedbacks) {
+          try {
+            // Call Supabase function
+            const { data: result, error: funcError } = await supabase.functions.invoke('analyze-sentiment', {
+              body: { text: feedback.content },
+            })
+
+            if (funcError) throw funcError
+
+            const sentiment = result?.sentiment || 'Trung lập'
+
+            // Update feedback
+            const { error: updateError } = await supabase
+              .from('feedbacks')
+              .update({ sentiment })
+              .eq('id', feedback.id)
+
+            if (updateError) throw updateError
+            updatedCount++
+          } catch (err) {
+            console.error('Error processing feedback', feedback.id, err)
+          }
+        }
+      }
+
+      if (updatedCount > 0) {
+        addToast(`✅ Cập nhật ${updatedCount} nhãn cảm xúc thành công!`, 'success')
+        // Reload sentiment data
+        loadSentimentData()
+      } else {
+        addToast('Không có dữ liệu cần phân tích', 'error')
+      }
+    } catch (error) {
+      console.error('Error updating AI sentiment:', error)
+      addToast('❌ Lỗi cập nhật cảm xúc bằng AI', 'error')
+    } finally {
+      setIsUpdatingAI(false)
     }
   }
 
@@ -246,6 +358,7 @@ export default function AnalyticsPage() {
     { name: 'Tích cực', value: sentimentStats.positive, fill: chartColors.positive },
     { name: 'Tiêu cực', value: sentimentStats.negative, fill: chartColors.negative },
     { name: 'Trung lập', value: sentimentStats.neutral, fill: chartColors.neutral },
+    { name: 'Spam', value: sentimentStats.spam, fill: chartColors.spam },
   ]
 
   return (
@@ -409,13 +522,12 @@ export default function AnalyticsPage() {
             borderLeft: `4px solid ${colors.primary}`,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <Sparkles size={20} style={{ color: colors.primary }} />
               <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: '600', margin: 0 }}>
                 Nhận xét AI
               </h3>
             </div>
             <p style={{ color: colors.text, fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-              {loading ? '⏳ Đang phân tích...' : aiInsight}
+              {loading ? 'Đang phân tích...' : aiInsight}
             </p>
           </div>
 
@@ -430,6 +542,7 @@ export default function AnalyticsPage() {
               { label: 'Tích cực', value: sentimentStats.positive, color: chartColors.positive },
               { label: 'Tiêu cực', value: sentimentStats.negative, color: chartColors.negative },
               { label: 'Trung lập', value: sentimentStats.neutral, color: chartColors.neutral },
+              { label: 'Spam', value: sentimentStats.spam, color: chartColors.spam },
             ].map(stat => (
               <div
                 key={stat.label}
@@ -447,12 +560,12 @@ export default function AnalyticsPage() {
                   width: '48px',
                   height: '48px',
                   borderRadius: '50%',
-                  background: `${stat.color}20`,
+                  background: stat.label === 'Spam' ? chartColors.spam : `${stat.color}20`,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: '12px',
                 }}>
-                  <span style={{ color: stat.color, fontSize: '24px', fontWeight: '700' }}>
+                  <span style={{ color: stat.label === 'Spam' ? '#FFFFFF' : stat.color, fontSize: '24px', fontWeight: '700' }}>
                     {stat.value}
                   </span>
                 </div>
@@ -472,36 +585,161 @@ export default function AnalyticsPage() {
             padding: '24px',
             marginBottom: '24px',
           }}>
-            <h3 style={{ color: colors.text, fontSize: '18px', fontWeight: '600', margin: '0 0 24px 0' }}>
-              Tỷ lệ cảm xúc
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h3 style={{ color: colors.text, fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                Tỷ lệ cảm xúc
+              </h3>
+              <button
+                onClick={handleUpdateAISentiment}
+                disabled={isUpdatingAI || loading}
+                style={{
+                  background: colors.primary,
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: isUpdatingAI || loading ? 'not-allowed' : 'pointer',
+                  opacity: isUpdatingAI || loading ? 0.6 : 1,
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => !isUpdatingAI && !loading && (e.currentTarget.style.transform = 'scale(1.05)')}
+                onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                {isUpdatingAI ? 'Đang cập nhật...' : 'Cập nhật nhãn cảm xúc bằng AI'}
+              </button>
+            </div>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-                ⏳ Đang tải...
+                Đang tải...
               </div>
-            ) : (sentimentStats.positive + sentimentStats.negative + sentimentStats.neutral) > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={sentimentChartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent = 0 }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {sentimentChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            ) : (sentimentStats.positive + sentimentStats.negative + sentimentStats.neutral + sentimentStats.spam) > 0 ? (
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '24px' }}>
+                <div style={{ flex: 1 }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={sentimentChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={false}
+                        innerRadius={60}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                        paddingAngle={2}
+                      >
+                        {sentimentChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => `${value} đánh giá`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ minWidth: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '12px' }}>
+                  {sentimentChartData.map((stat) => (
+                    <div key={stat.name} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: stat.fill }} />
+                      <span style={{ color: colors.textLight, fontSize: '12px', fontWeight: '500' }}>
+                        {stat.name}
+                      </span>
+                      <span style={{ color: colors.text, fontSize: '12px', fontWeight: '700', marginLeft: 'auto' }}>
+                        {stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
                 Chưa có đánh giá
+              </div>
+            )}
+          </div>
+
+          {/* Alert Comments Section - Comments Need Attention */}
+          <div style={{
+            background: '#fff5f7',
+            borderRadius: '16px',
+            border: `2px solid #f06192`,
+            padding: '20px',
+            marginBottom: '24px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ color: '#f06192', fontSize: '16px', fontWeight: '700', margin: 0 }}>
+                Bình luận cần chú ý (1-2 sao hoặc Tiêu cực)
+              </h3>
+              <button
+                onClick={() => setSentimentFilter(sentimentFilter === 'alert' ? 'all' : 'alert')}
+                style={{
+                  background: sentimentFilter === 'alert' ? '#f06192' : 'white',
+                  color: sentimentFilter === 'alert' ? 'white' : '#f06192',
+                  border: '1px solid #f06192',
+                  padding: '8px 16px',
+                  borderRadius: '16px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                {sentimentFilter === 'alert' ? 'Thu gọn' : 'Xem chi tiết bình luận'}
+              </button>
+            </div>
+
+            {sentimentFilter === 'alert' && (
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {reviews
+                  .filter(r => r.rating! <= 2 || r.sentiment === 'Tiêu cực')
+                  .map(review => (
+                    <div
+                      key={review.reviewid}
+                      style={{
+                        background: 'white',
+                        padding: '12px',
+                        marginBottom: '8px',
+                        borderRadius: '8px',
+                        borderLeft: `3px solid #f06192`,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', color: colors.text, fontWeight: '600' }}>
+                              {review.product?.name || 'Sản phẩm'} - ⭐ {review.rating}/5
+                            </span>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '2px 8px',
+                                borderRadius: '8px',
+                                background: '#f06192',
+                                color: 'white',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                              }}
+                            >
+                              {review.sentiment || 'Chưa phân tích'}
+                            </span>
+                          </div>
+                          <p style={{ color: colors.text, fontSize: '12px', margin: 0, lineHeight: '1.4' }}>
+                            "{review.comment}"
+                          </p>
+                        </div>
+                        <span style={{ color: colors.textLight, fontSize: '11px', whiteSpace: 'nowrap', marginLeft: '8px' }}>
+                          {new Date(review.createdat).toLocaleDateString('vi-VN')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                {reviews.filter(r => r.rating! <= 2 || r.sentiment === 'Tiêu cực').length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px', color: colors.textLight, fontSize: '13px' }}>
+                    Không có bình luận cần chú ý
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -514,63 +752,69 @@ export default function AnalyticsPage() {
             boxShadow: 'rgba(112, 144, 176, 0.08) 0px 18px 40px',
             padding: '24px',
           }}>
-            <h3 style={{ color: colors.text, fontSize: '18px', fontWeight: '600', margin: '0 0 16px 0' }}>
-              Danh sách đánh giá gần đây
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ color: colors.text, fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                Danh sách đánh giá
+              </h3>
+            </div>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>
-                ⏳ Đang tải...
+                Đang tải...
               </div>
             ) : reviews.length > 0 ? (
               <div>
-                {reviews.map(review => (
-                  <div
-                    key={review.reviewid}
-                    style={{
-                      borderBottom: `1px solid ${colors.border}`,
-                      paddingBottom: '16px',
-                      marginBottom: '16px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
-                      <div>
-                        <p style={{ color: colors.text, fontWeight: '600', margin: '0 0 4px 0', fontSize: '14px' }}>
-                          {review.product?.name || 'Sản phẩm'}
-                        </p>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '12px' }}>
-                            ⭐ {review.rating}/5
-                          </span>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              background:
-                                review.sentiment === 'Tích cực' ? `${chartColors.positive}20`
-                                  : review.sentiment === 'Tiêu cực' ? `${chartColors.negative}20`
-                                    : `${chartColors.neutral}20`,
-                              color:
-                                review.sentiment === 'Tích cực' ? chartColors.positive
-                                  : review.sentiment === 'Tiêu cực' ? chartColors.negative
-                                    : chartColors.neutral,
-                              fontSize: '12px',
-                              fontWeight: '600',
-                            }}
-                          >
-                            {review.sentiment}
-                          </span>
+                {reviews.map(review => {
+                  return (
+                    <div
+                      key={review.reviewid}
+                      style={{
+                        borderBottom: `1px solid ${colors.border}`,
+                        paddingBottom: '16px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                        <div>
+                          <p style={{ color: colors.text, fontWeight: '600', margin: '0 0 4px 0', fontSize: '14px' }}>
+                            {review.product?.name || 'Sản phẩm'}
+                          </p>
+                          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px' }}>
+                              ⭐ {review.rating}/5
+                            </span>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                background:
+                                  review.sentiment === 'Tích cực' ? `${chartColors.positive}20`
+                                    : review.sentiment === 'Tiêu cực' ? `${chartColors.negative}20`
+                                      : review.sentiment === 'Spam' ? chartColors.spam
+                                        : `${chartColors.neutral}20`,
+                                color:
+                                  review.sentiment === 'Tích cực' ? chartColors.positive
+                                    : review.sentiment === 'Tiêu cực' ? chartColors.negative
+                                      : review.sentiment === 'Spam' ? '#000000'
+                                        : chartColors.neutral,
+                                fontSize: '12px',
+                                fontWeight: '600',
+                              }}
+                            >
+                              {review.sentiment}
+                            </span>
+                          </div>
                         </div>
+                        <span style={{ color: colors.textLight, fontSize: '12px', whiteSpace: 'nowrap' }}>
+                          {new Date(review.createdat).toLocaleDateString('vi-VN')}
+                        </span>
                       </div>
-                      <span style={{ color: colors.textLight, fontSize: '12px' }}>
-                        {new Date(review.createdat).toLocaleDateString('vi-VN')}
-                      </span>
+                      <p style={{ color: colors.text, fontSize: '13px', margin: 0, lineHeight: '1.5' }}>
+                        "{review.comment}"
+                      </p>
                     </div>
-                    <p style={{ color: colors.text, fontSize: '13px', margin: 0, lineHeight: '1.5' }}>
-                      "{review.comment}"
-                    </p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '40px', color: colors.textLight }}>

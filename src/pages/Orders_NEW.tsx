@@ -43,29 +43,29 @@ const StatusBadge = ({ status }: { status: string }) => {
   let label = 'N/A'
 
   switch (status) {
-    case 'chờ':
+    case 'chß╗¥':
       bgColor = '#EBF3FF'
       textColor = '#4318FF'
       dotColor = '#4318FF'
-      label = 'Chờ'
+      label = 'Chß╗¥'
       break
-    case 'đang làm':
+    case '─æang l├ám':
       bgColor = '#FFF7E6'
       textColor = '#FF9900'
       dotColor = '#FF9900'
-      label = 'Đang làm'
+      label = '─Éang l├ám'
       break
     case 'xong':
       bgColor = '#E6FFFA'
       textColor = '#00A869'
       dotColor = '#00A869'
-      label = 'Hoàn thành'
+      label = 'Ho├án th├ánh'
       break
-    case 'hủy':
+    case 'hß╗ºy':
       bgColor = '#FFF5F5'
       textColor = '#C53030'
       dotColor = '#C53030'
-      label = 'Hủy'
+      label = 'Hß╗ºy'
       break
   }
 
@@ -85,7 +85,7 @@ export const Orders: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Đọc role từ localStorage
+  // ─Éß╗ìc role tß╗½ localStorage
   const role = localStorage.getItem('userRole') || 'Staff'
   const userBranchId = localStorage.getItem('userBranchId') || ''
   
@@ -105,7 +105,7 @@ export const Orders: React.FC = () => {
   const [loadingDetails, setLoadingDetails] = useState(false)
 
   // Get branch name for display
-  const branchDisplay = branches.find(b => b.branchid === userBranchId)?.name || 'Chi nhánh'
+  const branchDisplay = branches.find(b => b.branchid === userBranchId)?.name || 'Chi nh├ính'
 
   useEffect(() => {
     loadBranches()
@@ -138,11 +138,11 @@ export const Orders: React.FC = () => {
         .from('orders')
         .select('*')
       
-      // Lọc theo chi nhánh nếu không phải Super Admin
+      // Lß╗ìc theo chi nh├ính nß║┐u kh├┤ng phß║úi Super Admin
       if (!isSuperAdmin && userBranchId) {
         query = query.eq('branchid', userBranchId)
       } else if (selectedBranch !== 'all') {
-        // Super Admin thì lọc theo dropdown selection
+        // Super Admin th├¼ lß╗ìc theo dropdown selection
         query = query.eq('branchid', selectedBranch)
       }
 
@@ -166,7 +166,7 @@ export const Orders: React.FC = () => {
         const enrichedOrders: OrderWithDetails[] = data.map(order => ({
           ...order,
           branchname: branchMap.get(order.branchid) || 'N/A',
-          customername: order.customerid ? customerMap.get(order.customerid) || 'Khách lẻ' : 'Khách lẻ'
+          customername: order.customerid ? customerMap.get(order.customerid) || 'Kh├ích lß║╗' : 'Kh├ích lß║╗'
         }))
 
         setOrders(enrichedOrders)
@@ -260,11 +260,11 @@ export const Orders: React.FC = () => {
   }
 
   const handleCancelOrder = async (orderId: string) => {
-    if (confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')) {
+    if (confirm('Bß║ín c├│ chß║»c chß║»n muß╗æn hß╗ºy ─æ╞ín h├áng n├áy?')) {
       try {
         const { error } = await supabase
           .from('orders')
-          .update({ status: 'hủy' })
+          .update({ status: 'hß╗ºy' })
           .eq('orderid', orderId)
 
         if (error) throw error
@@ -272,7 +272,7 @@ export const Orders: React.FC = () => {
         setShowModal(false)
       } catch (error) {
         console.error('Error cancelling order:', error)
-        alert('Lỗi khi hủy đơn hàng')
+        alert('Lß╗ùi khi hß╗ºy ─æ╞ín h├áng')
       }
     }
   }
@@ -291,19 +291,19 @@ export const Orders: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: '#2B3674' }}>Quản lý đơn hàng</h1>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: '#2B3674' }}>Quß║ún l├╜ ─æ╞ín h├áng</h1>
         {!isSuperAdmin && (
-          <p style={{ color: '#8F9CB8' }}>Chi nhánh: <strong>{branchDisplay}</strong></p>
+          <p style={{ color: '#8F9CB8' }}>Chi nh├ính: <strong>{branchDisplay}</strong></p>
         )}
       </div>
 
       {/* Filter Section */}
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Chi nhánh Filter - Chỉ show cho Super Admin */}
+          {/* Chi nh├ính Filter - Chß╗ë show cho Super Admin */}
           {isSuperAdmin && (
             <div>
-              <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Chi nhánh</label>
+              <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Chi nh├ính</label>
               <div className="relative">
                 <select
                   value={selectedBranch}
@@ -311,7 +311,7 @@ export const Orders: React.FC = () => {
                   className="w-full px-4 py-2 rounded-lg text-sm appearance-none pr-10"
                   style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
                 >
-                  <option value="all">Tất cả chi nhánh</option>
+                  <option value="all">Tß║Ñt cß║ú chi nh├ính</option>
                   {branches.map(branch => (
                     <option key={branch.branchid} value={branch.branchid}>
                       {branch.name}
@@ -327,9 +327,9 @@ export const Orders: React.FC = () => {
             </div>
           )}
 
-          {/* Trạng thái */}
+          {/* Trß║íng th├íi */}
           <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Trạng thái</label>
+            <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Trß║íng th├íi</label>
             <div className="relative">
               <select
                 value={selectedStatus}
@@ -337,11 +337,11 @@ export const Orders: React.FC = () => {
                 className="w-full px-4 py-2 rounded-lg text-sm appearance-none pr-10"
                 style={{ backgroundColor: '#F4F7FE', color: '#2B3674', border: '1px solid #E0E5F2' }}
               >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="chờ">Chờ</option>
-                <option value="đang làm">Đang làm</option>
-                <option value="xong">Hoàn thành</option>
-                <option value="hủy">Hủy</option>
+                <option value="all">Tß║Ñt cß║ú trß║íng th├íi</option>
+                <option value="chß╗¥">Chß╗¥</option>
+                <option value="─æang l├ám">─Éang l├ám</option>
+                <option value="xong">Ho├án th├ánh</option>
+                <option value="hß╗ºy">Hß╗ºy</option>
               </select>
               <ChevronDown 
                 size={18} 
@@ -351,9 +351,9 @@ export const Orders: React.FC = () => {
             </div>
           </div>
 
-          {/* Ngày bắt đầu */}
+          {/* Ng├áy bß║»t ─æß║ºu */}
           <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Từ ngày</label>
+            <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Tß╗½ ng├áy</label>
             <input
               type="date"
               value={startDate}
@@ -363,9 +363,9 @@ export const Orders: React.FC = () => {
             />
           </div>
 
-          {/* Ngày kết thúc */}
+          {/* Ng├áy kß║┐t th├║c */}
           <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>Đến ngày</label>
+            <label className="block text-sm font-semibold mb-2" style={{ color: '#2B3674' }}>─Éß║┐n ng├áy</label>
             <input
               type="date"
               value={endDate}
@@ -381,24 +381,24 @@ export const Orders: React.FC = () => {
       <Card>
         {loading ? (
           <div className="text-center py-12" style={{ color: '#8F9CB8' }}>
-            Đang tải dữ liệu...
+            ─Éang tß║úi dß╗» liß╗çu...
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="text-center py-12" style={{ color: '#8F9CB8' }}>
-            Không tìm thấy đơn hàng
+            Kh├┤ng t├¼m thß║Ñy ─æ╞ín h├áng
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: '1px solid #E0E5F2' }}>
-                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Mã đơn</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Khách hàng</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Chi nhánh</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Tổng tiền</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Trạng thái</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Ngày</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Hành động</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>M├ú ─æ╞ín</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Kh├ích h├áng</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Chi nh├ính</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Tß╗òng tiß╗ün</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Trß║íng th├íi</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>Ng├áy</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: '#2B3674' }}>H├ánh ─æß╗Öng</th>
                 </tr>
               </thead>
               <tbody>
@@ -407,7 +407,7 @@ export const Orders: React.FC = () => {
                     <td className="py-3 px-4 text-sm" style={{ color: '#2B3674' }}><strong>{order.orderid}</strong></td>
                     <td className="py-3 px-4 text-sm" style={{ color: '#2B3674' }}>{order.customername}</td>
                     <td className="py-3 px-4 text-sm" style={{ color: '#2B3674' }}>{order.branchname}</td>
-                    <td className="py-3 px-4 text-sm" style={{ color: '#2B3674' }}>{order.finalamount?.toLocaleString('vi-VN')}₫</td>
+                    <td className="py-3 px-4 text-sm" style={{ color: '#2B3674' }}>{order.finalamount?.toLocaleString('vi-VN')}Γé½</td>
                     <td className="py-3 px-4 text-sm">
                       <StatusBadge status={order.status} />
                     </td>
@@ -439,7 +439,7 @@ export const Orders: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: '#E0E5F2' }}>
               <h2 className="text-xl font-bold" style={{ color: '#2B3674' }}>
-                Chi tiết đơn hàng: {selectedOrder.orderid}
+                Chi tiß║┐t ─æ╞ín h├áng: {selectedOrder.orderid}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
@@ -454,19 +454,19 @@ export const Orders: React.FC = () => {
               {/* Order Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Khách hàng</p>
+                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Kh├ích h├áng</p>
                   <p className="font-semibold" style={{ color: '#2B3674' }}>{selectedOrder.customername}</p>
                 </div>
                 <div>
-                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Chi nhánh</p>
+                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Chi nh├ính</p>
                   <p className="font-semibold" style={{ color: '#2B3674' }}>{selectedOrder.branchname}</p>
                 </div>
                 <div>
-                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Trạng thái</p>
+                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Trß║íng th├íi</p>
                   <StatusBadge status={selectedOrder.status} />
                 </div>
                 <div>
-                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Ngày đặt</p>
+                  <p className="text-sm" style={{ color: '#8F9CB8' }}>Ng├áy ─æß║╖t</p>
                   <p className="font-semibold" style={{ color: '#2B3674' }}>
                     {new Date(selectedOrder.orderdate).toLocaleString('vi-VN')}
                   </p>
@@ -475,9 +475,9 @@ export const Orders: React.FC = () => {
 
               {/* Order Items */}
               <div>
-                <h3 className="font-bold mb-3" style={{ color: '#2B3674' }}>Sản phẩm trong đơn</h3>
+                <h3 className="font-bold mb-3" style={{ color: '#2B3674' }}>Sß║ún phß║⌐m trong ─æ╞ín</h3>
                 {loadingDetails ? (
-                  <p style={{ color: '#8F9CB8' }}>Đang tải...</p>
+                  <p style={{ color: '#8F9CB8' }}>─Éang tß║úi...</p>
                 ) : (
                   <div className="space-y-2">
                     {orderDetails.map(detail => (
@@ -490,7 +490,7 @@ export const Orders: React.FC = () => {
                           {detail.productname} ({detail.quantity}x)
                         </p>
                         <p className="text-sm" style={{ color: '#8F9CB8' }}>
-                          Size: {detail.sizename} | Mức đường: {detail.sugarlevel} | Mức đá: {detail.icelevel}
+                          Size: {detail.sizename} | Mß╗⌐c ─æ╞░ß╗¥ng: {detail.sugarlevel} | Mß╗⌐c ─æ├í: {detail.icelevel}
                         </p>
                         {detail.toppings.length > 0 && (
                           <p className="text-sm" style={{ color: '#8F9CB8' }}>
@@ -498,7 +498,7 @@ export const Orders: React.FC = () => {
                           </p>
                         )}
                         <p className="font-semibold text-sm" style={{ color: '#4318FF' }}>
-                          {detail.subtotal?.toLocaleString('vi-VN')}₫
+                          {detail.subtotal?.toLocaleString('vi-VN')}Γé½
                         </p>
                       </div>
                     ))}
@@ -510,27 +510,27 @@ export const Orders: React.FC = () => {
               <div className="border-t pt-4" style={{ borderColor: '#E0E5F2' }}>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p style={{ color: '#8F9CB8' }}>Tổng tiền hàng</p>
+                    <p style={{ color: '#8F9CB8' }}>Tß╗òng tiß╗ün h├áng</p>
                     <p className="font-semibold" style={{ color: '#2B3674' }}>
-                      {selectedOrder.totalamount?.toLocaleString('vi-VN')}₫
+                      {selectedOrder.totalamount?.toLocaleString('vi-VN')}Γé½
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#8F9CB8' }}>Giảm giá</p>
+                    <p style={{ color: '#8F9CB8' }}>Giß║úm gi├í</p>
                     <p className="font-semibold" style={{ color: '#2B3674' }}>
-                      -{selectedOrder.discountamount?.toLocaleString('vi-VN')}₫
+                      -{selectedOrder.discountamount?.toLocaleString('vi-VN')}Γé½
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#8F9CB8' }}>Phí giao hàng</p>
+                    <p style={{ color: '#8F9CB8' }}>Ph├¡ giao h├áng</p>
                     <p className="font-semibold" style={{ color: '#2B3674' }}>
-                      {selectedOrder.shippingfee?.toLocaleString('vi-VN')}₫
+                      {selectedOrder.shippingfee?.toLocaleString('vi-VN')}Γé½
                     </p>
                   </div>
                   <div>
-                    <p style={{ color: '#8F9CB8' }}>Thành tiền</p>
+                    <p style={{ color: '#8F9CB8' }}>Th├ánh tiß╗ün</p>
                     <p className="font-bold text-lg" style={{ color: '#4318FF' }}>
-                      {selectedOrder.finalamount?.toLocaleString('vi-VN')}₫
+                      {selectedOrder.finalamount?.toLocaleString('vi-VN')}Γé½
                     </p>
                   </div>
                 </div>
@@ -538,12 +538,12 @@ export const Orders: React.FC = () => {
 
               {/* Actions */}
               <div className="flex gap-3 pt-4">
-                {selectedOrder.status !== 'hủy' && selectedOrder.status !== 'xong' && (
+                {selectedOrder.status !== 'hß╗ºy' && selectedOrder.status !== 'xong' && (
                   <button
                     onClick={() => handleCancelOrder(selectedOrder.orderid)}
                     className="flex-1 px-4 py-2 rounded-lg font-semibold text-white bg-red-500 hover:bg-red-600"
                   >
-                    Hủy đơn
+                    Hß╗ºy ─æ╞ín
                   </button>
                 )}
                 <button
@@ -551,7 +551,7 @@ export const Orders: React.FC = () => {
                   className="flex-1 px-4 py-2 rounded-lg font-semibold text-white"
                   style={{ backgroundColor: '#4318FF' }}
                 >
-                  Đóng
+                  ─É├│ng
                 </button>
               </div>
             </div>

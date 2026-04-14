@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { KDSBoard } from '@/components/staff/KDSBoard'
 
-// ═════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // STAFF KDS PAGE
-// ═════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 export const StaffKDS: React.FC = () => {
   const [branchId, setBranchId] = useState<number>(0)
 
-  // ─────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   // GET BRANCH ID FROM LOCALSTORAGE
-  // ─────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
   useEffect(() => {
     const stored = localStorage.getItem('userBranchId')
@@ -19,16 +19,16 @@ export const StaffKDS: React.FC = () => {
     }
   }, [])
 
-  // ─────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
   // RENDER
-  // ─────────────────────────────────────────────────────────────
+  // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
   if (branchId === 0) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Đang khởi tạo KDS...</p>
+          <p className="text-gray-600 font-medium">─Éang khß╗ƒi tß║ío KDS...</p>
         </div>
       </div>
     )
@@ -39,10 +39,10 @@ export const StaffKDS: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-4xl font-black text-white">🍜 KITCHEN DISPLAY SYSTEM (KDS)</h1>
+          <h1 className="text-4xl font-black text-white">≡ƒì£ KITCHEN DISPLAY SYSTEM (KDS)</h1>
           <p className="text-gray-300 text-sm mt-2">
-            📍 Chi nhánh <span className="font-bold text-primary">#{branchId}</span> | 
-            <span className="ml-2">⏰ {new Date().toLocaleTimeString('vi-VN')}</span>
+            ≡ƒôì Chi nh├ính <span className="font-bold text-primary">#{branchId}</span> | 
+            <span className="ml-2">ΓÅ░ {new Date().toLocaleTimeString('vi-VN')}</span>
           </p>
         </div>
 
@@ -52,7 +52,7 @@ export const StaffKDS: React.FC = () => {
         {/* Footer Info */}
         <div className="mt-8 px-4 py-3 bg-gray-800 rounded-[15px] text-center border border-gray-700">
           <p className="text-gray-400 text-xs font-medium">
-            ℹ️ Hệ thống tự động cập nhật mỗi 5 giây | 🔊 Có thông báo âm thanh khi có đơn hàng mới
+            Γä╣∩╕Å Hß╗ç thß╗æng tß╗▒ ─æß╗Öng cß║¡p nhß║¡t mß╗ùi 5 gi├óy | ≡ƒöè C├│ th├┤ng b├ío ├óm thanh khi c├│ ─æ╞ín h├áng mß╗¢i
           </p>
         </div>
       </div>

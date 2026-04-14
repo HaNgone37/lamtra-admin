@@ -21,7 +21,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   const bgColor = status === 'active' ? '#E6FFFA' : '#F0F0F0'
   const textColor = status === 'active' ? '#047857' : '#5A5A5A'
   const dotColor = status === 'active' ? '#047857' : '#5A5A5A'
-  const label = status === 'active' ? 'Đang làm' : 'Nghỉ việc'
+  const label = status === 'active' ? '─Éang l├ám' : 'Nghß╗ë viß╗çc'
 
   return (
     <span
@@ -61,7 +61,7 @@ const StatCard = ({ title, value, subtext }: { title: string; value: number; sub
           <p className="text-3xl font-bold" style={{ color: '#2B3674' }}>{value}</p>
           <p className="text-xs mt-1" style={{ color: '#8F9CB8' }}>{subtext}</p>
         </div>
-        <div className="text-4xl" style={{ color: '#4318FF', opacity: 0.1 }}>→</div>
+        <div className="text-4xl" style={{ color: '#4318FF', opacity: 0.1 }}>ΓåÆ</div>
       </div>
     </div>
   </Card>
@@ -92,7 +92,7 @@ export const Employees: React.FC = () => {
       const userStr = localStorage.getItem('user')
       return userStr ? JSON.parse(userStr) : null
     } catch (e) {
-      console.error('❌ Lỗi parse user từ localStorage:', e)
+      console.error('Γ¥î Lß╗ùi parse user tß╗½ localStorage:', e)
       return null
     }
   }
@@ -110,11 +110,11 @@ export const Employees: React.FC = () => {
     try {
       setLoading(true)
       
-      console.log('=== 🚀 BẮT ĐẦU TẢI DỮ LIỆU ===')
-      console.log('👤 User từ localStorage:', currentUser)
-      console.log('🔐 Raw Role:', userRole)
-      console.log('✅ isSuperAdmin:', isSuperAdmin)
-      console.log('🏢 userBranchId:', userBranchId)
+      console.log('=== ≡ƒÜÇ Bß║«T ─Éß║ªU Tß║óI Dß╗« LIß╗åU ===')
+      console.log('≡ƒæñ User tß╗½ localStorage:', currentUser)
+      console.log('≡ƒöÉ Raw Role:', userRole)
+      console.log('Γ£à isSuperAdmin:', isSuperAdmin)
+      console.log('≡ƒÅó userBranchId:', userBranchId)
       
       let branchData: Branch[] = []
       try {
@@ -124,14 +124,14 @@ export const Employees: React.FC = () => {
           .order('name', { ascending: true })
         
         if (branchesError) {
-          console.error('❌ [BRANCHES]:', branchesError)
+          console.error('Γ¥î [BRANCHES]:', branchesError)
         } else {
           branchData = branchesData || []
-          console.log(`✅ [BRANCHES] ${branchData.length} chi nhánh`)
+          console.log(`Γ£à [BRANCHES] ${branchData.length} chi nh├ính`)
         }
         setBranches(branchData)
       } catch (err) {
-        console.error('❌ [BRANCHES]:', err)
+        console.error('Γ¥î [BRANCHES]:', err)
         setBranches([])
       }
 
@@ -143,13 +143,13 @@ export const Employees: React.FC = () => {
           .order('fullname', { ascending: true })
         
         if (isSuperAdmin) {
-          console.log('🔑 [SUPER ADMIN] - Lấy TẤT CẢ')
+          console.log('≡ƒöæ [SUPER ADMIN] - Lß║Ñy Tß║ñT Cß║ó')
         } else {
           if (!userBranchId) {
-            console.warn('⚠️ Branch ID trống!')
+            console.warn('ΓÜá∩╕Å Branch ID trß╗æng!')
             empData = []
           } else {
-            console.log(`👤 [BRANCH MANAGER] Filter branchid = ${userBranchId}`)
+            console.log(`≡ƒæñ [BRANCH MANAGER] Filter branchid = ${userBranchId}`)
             query = query.eq('branchid', userBranchId)
           }
         }
@@ -159,15 +159,15 @@ export const Employees: React.FC = () => {
         } else {
           const { data, error } = await query
           if (error) {
-            console.error('❌ [QUERY]:', error)
+            console.error('Γ¥î [QUERY]:', error)
           } else {
-            console.log('📦 Dữ liệu nhân viên thô từ DB:', data)
+            console.log('≡ƒôª Dß╗» liß╗çu nh├ón vi├¬n th├┤ tß╗½ DB:', data)
             empData = data || []
-            console.log(`✅ [EMPLOYEES] ${empData.length} nhân viên`)
+            console.log(`Γ£à [EMPLOYEES] ${empData.length} nh├ón vi├¬n`)
           }
         }
 
-        console.log(`📊 setEmployees(${empData.length})`)
+        console.log(`≡ƒôè setEmployees(${empData.length})`)
         setEmployees(empData)
         empData.forEach((e, idx) => {
           const branchName = Array.isArray(e.branches) ? e.branches[0]?.name : e.branches?.name
@@ -175,7 +175,7 @@ export const Employees: React.FC = () => {
         })
         
       } catch (err) {
-        console.error('❌ [EMPLOYEES]:', err)
+        console.error('Γ¥î [EMPLOYEES]:', err)
         setEmployees([])
       }
 
@@ -190,11 +190,11 @@ export const Employees: React.FC = () => {
         return createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear
       }).length
       
-      console.log('📈 Stats:', { totalEmployees, totalBranches, newEmployeesThisMonth })
+      console.log('≡ƒôê Stats:', { totalEmployees, totalBranches, newEmployeesThisMonth })
       setStats({ totalEmployees, totalBranches, newEmployeesThisMonth })
       
     } catch (error) {
-      console.error('❌ [FATAL]:', error)
+      console.error('Γ¥î [FATAL]:', error)
       setEmployees([])
       setBranches([])
     } finally {
@@ -229,7 +229,7 @@ export const Employees: React.FC = () => {
 
   const handleAddEmployee = async () => {
     if (!formData.fullname || !formData.email || !formData.branchid) {
-      alert('Vui lòng điền đầy đủ')
+      alert('Vui l├▓ng ─æiß╗ün ─æß║ºy ─æß╗º')
       return
     }
     try {
@@ -244,10 +244,10 @@ export const Employees: React.FC = () => {
       if (error) throw error
       await loadData()
       setShowAddModal(false)
-      alert('Thêm thành công!')
+      alert('Th├¬m th├ánh c├┤ng!')
     } catch (error) {
       console.error('Error:', error)
-      alert('Lỗi')
+      alert('Lß╗ùi')
     }
   }
 
@@ -267,10 +267,10 @@ export const Employees: React.FC = () => {
       if (error) throw error
       await loadData()
       setShowEditModal(false)
-      alert('Cập nhập thành công!')
+      alert('Cß║¡p nhß║¡p th├ánh c├┤ng!')
     } catch (error) {
       console.error('Error:', error)
-      alert('Lỗi')
+      alert('Lß╗ùi')
     }
   }
 
@@ -298,22 +298,22 @@ export const Employees: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#2B3674' }}>Quản lý nhân sự</h1>
-          <p style={{ color: '#8F9CB8' }}>{isSuperAdmin ? 'Toàn bộ nhân sự' : 'Nhân sự chi nhánh'}</p>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: '#2B3674' }}>Quß║ún l├╜ nh├ón sß╗▒</h1>
+          <p style={{ color: '#8F9CB8' }}>{isSuperAdmin ? 'To├án bß╗Ö nh├ón sß╗▒' : 'Nh├ón sß╗▒ chi nh├ính'}</p>
         </div>
         <button
           onClick={handleOpenAddModal}
           className="px-6 py-3 rounded-lg font-medium flex items-center gap-2"
           style={{ backgroundColor: '#4318FF', color: '#FFFFFF' }}
         >
-          <Plus size={20} /> Thêm nhân viên
+          <Plus size={20} /> Th├¬m nh├ón vi├¬n
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Tổng nhân sự" value={stats.totalEmployees} subtext="toàn hệ thống" />
-        <StatCard title="Chi nhánh" value={stats.totalBranches} subtext="điểm kinh doanh" />
-        <StatCard title="Nhân sự mới" value={stats.newEmployeesThisMonth} subtext="tháng này" />
+        <StatCard title="Tß╗òng nh├ón sß╗▒" value={stats.totalEmployees} subtext="to├án hß╗ç thß╗æng" />
+        <StatCard title="Chi nh├ính" value={stats.totalBranches} subtext="─æiß╗âm kinh doanh" />
+        <StatCard title="Nh├ón sß╗▒ mß╗¢i" value={stats.newEmployeesThisMonth} subtext="th├íng n├áy" />
       </div>
 
       <Card>
@@ -322,7 +322,7 @@ export const Employees: React.FC = () => {
             <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#8F9CB8' }} />
             <input
               type="text"
-              placeholder="Tìm theo tên hoặc email..."
+              placeholder="T├¼m theo t├¬n hoß║╖c email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 rounded-lg text-sm"
@@ -337,7 +337,7 @@ export const Employees: React.FC = () => {
                 className="w-full px-4 py-3 rounded-lg text-sm appearance-none pr-10"
                 style={{ backgroundColor: '#F4F7FE', color: '#2B3674' }}
               >
-                <option value="all">Tất cả chi nhánh</option>
+                <option value="all">Tß║Ñt cß║ú chi nh├ính</option>
                 {branches.map(branch => (
                   <option key={branch.branchid} value={branch.branchid}>{branch.name}</option>
                 ))}
@@ -350,19 +350,19 @@ export const Employees: React.FC = () => {
 
       <Card>
         {loading ? (
-          <div className="text-center py-12" style={{ color: '#8F9CB8' }}>Đang tải...</div>
+          <div className="text-center py-12" style={{ color: '#8F9CB8' }}>─Éang tß║úi...</div>
         ) : filteredEmployees.length === 0 ? (
-          <div className="text-center py-12" style={{ color: '#8F9CB8' }}>Không tìm thấy</div>
+          <div className="text-center py-12" style={{ color: '#8F9CB8' }}>Kh├┤ng t├¼m thß║Ñy</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr style={{ borderBottom: '2px solid #E0E5F2' }}>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Nhân viên</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Vị trí</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Chi nhánh</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Trạng thái</th>
-                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Thao tác</th>
+                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Nh├ón vi├¬n</th>
+                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Vß╗ï tr├¡</th>
+                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Chi nh├ính</th>
+                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Trß║íng th├íi</th>
+                  <th className="text-left py-4 px-6 font-bold" style={{ color: '#2B3674' }}>Thao t├íc</th>
                 </tr>
               </thead>
               <tbody>
@@ -406,27 +406,27 @@ export const Employees: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Thêm nhân viên</h2>
+              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Th├¬m nh├ón vi├¬n</h2>
               <button onClick={() => setShowAddModal(false)} className="p-2" style={{ backgroundColor: '#F4F7FE' }}><X size={20} /></button>
             </div>
             <div className="space-y-4 mb-6">
-              <input type="text" placeholder="Tên" value={formData.fullname} onChange={(e) => setFormData({ ...formData, fullname: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }} />
+              <input type="text" placeholder="T├¬n" value={formData.fullname} onChange={(e) => setFormData({ ...formData, fullname: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }} />
               <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }} />
-              <input type="tel" placeholder="Số điện thoại" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }} />
+              <input type="tel" placeholder="Sß╗æ ─æiß╗çn thoß║íi" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }} />
               <select value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }}>
-                <option value="barista">Pha chế</option>
-                <option value="manager">Quản lý</option>
+                <option value="barista">Pha chß║┐</option>
+                <option value="manager">Quß║ún l├╜</option>
               </select>
               {isSuperAdmin && (
                 <select value={formData.branchid} onChange={(e) => setFormData({ ...formData, branchid: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }}>
-                  <option value="">Chọn chi nhánh</option>
+                  <option value="">Chß╗ìn chi nh├ính</option>
                   {branches.map(b => <option key={b.branchid} value={b.branchid}>{b.name}</option>)}
                 </select>
               )}
             </div>
             <div className="flex gap-3">
-              <button onClick={handleAddEmployee} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#4318FF', color: '#fff' }}>Thêm</button>
-              <button onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#E0E5F2' }}>Hủy</button>
+              <button onClick={handleAddEmployee} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#4318FF', color: '#fff' }}>Th├¬m</button>
+              <button onClick={() => setShowAddModal(false)} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#E0E5F2' }}>Hß╗ºy</button>
             </div>
           </Card>
         </div>
@@ -436,7 +436,7 @@ export const Employees: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Sửa nhân viên</h2>
+              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Sß╗¡a nh├ón vi├¬n</h2>
               <button onClick={() => setShowEditModal(false)} className="p-2" style={{ backgroundColor: '#F4F7FE' }}><X size={20} /></button>
             </div>
             <div className="space-y-4 mb-6">
@@ -444,17 +444,17 @@ export const Employees: React.FC = () => {
               <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }} />
               <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }} />
               <select value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }}>
-                <option value="barista">Pha chế</option>
-                <option value="manager">Quản lý</option>
+                <option value="barista">Pha chß║┐</option>
+                <option value="manager">Quß║ún l├╜</option>
               </select>
               <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#F4F7FE' }}>
-                <option value="active">Đang làm</option>
-                <option value="inactive">Nghỉ việc</option>
+                <option value="active">─Éang l├ám</option>
+                <option value="inactive">Nghß╗ë viß╗çc</option>
               </select>
             </div>
             <div className="flex gap-3">
-              <button onClick={handleUpdateEmployee} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#4318FF', color: '#fff' }}>Lưu</button>
-              <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#E0E5F2' }}>Hủy</button>
+              <button onClick={handleUpdateEmployee} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#4318FF', color: '#fff' }}>L╞░u</button>
+              <button onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2 rounded-lg" style={{ backgroundColor: '#E0E5F2' }}>Hß╗ºy</button>
             </div>
           </Card>
         </div>
@@ -464,15 +464,15 @@ export const Employees: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Cấp tài khoản</h2>
+              <h2 className="text-2xl font-bold" style={{ color: '#2B3674' }}>Cß║Ñp t├ái khoß║ún</h2>
               <button onClick={() => setShowAccountModal(false)} className="p-2" style={{ backgroundColor: '#F4F7FE' }}><X size={20} /></button>
             </div>
             <div className="space-y-4">
               <div style={{ backgroundColor: '#EBF3FF', padding: '16px', borderRadius: '12px' }}>
-                <p style={{ color: '#4318FF', fontWeight: 'bold' }}>Nhân viên: {selectedEmployee.fullname}</p>
+                <p style={{ color: '#4318FF', fontWeight: 'bold' }}>Nh├ón vi├¬n: {selectedEmployee.fullname}</p>
                 <p style={{ color: '#8F9CB8', fontSize: '12px' }}>Email: {selectedEmployee.email}</p>
               </div>
-              <button onClick={() => setShowAccountModal(false)} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#E0E5F2' }}>Đóng</button>
+              <button onClick={() => setShowAccountModal(false)} className="w-full px-4 py-2 rounded-lg" style={{ backgroundColor: '#E0E5F2' }}>─É├│ng</button>
             </div>
           </Card>
         </div>

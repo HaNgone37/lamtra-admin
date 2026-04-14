@@ -2,7 +2,7 @@
 import { supabase } from '@/utils/supabaseClient'
 import { orderService } from '@/services/orderService'
 import { Toast } from '@/components/Toast'
-import { ChefHat, Box, BookOpen, Coffee, Play, Check } from 'lucide-react'
+import { ChefHat, Box, BookOpen, Coffee } from 'lucide-react'
 
 const PINK = '#f06192'
 const PINK_LIGHT = '#f5d5e0'
@@ -50,13 +50,17 @@ const KDS = ({ bid, setToast }: { bid: number; setToast: any }) => {
       try {
         const p = await orderService.getOrdersByStatusAndBranch(bid, 'Chờ xác nhận')
         const m = await orderService.getOrdersByStatusAndBranch(bid, 'Đang làm')
-        const allOrders = [...p, ...m]
+        const s = await orderService.getOrdersByStatusAndBranch(bid, 'Đang giao')
+        const allOrders = [...p, ...m, ...s]
         setOrders(allOrders)
         const states: { [key: string]: { state: string; startTime: number } } = {}
         allOrders.forEach((o: any) => {
           const existingState = orderStates[o.orderid]
+          const stateStr = o.status === 'Chờ xác nhận' ? 'pending'
+            : o.status === 'Đang làm' ? 'making'
+            : 'shipping'
           states[o.orderid] = {
-            state: o.status === 'Chờ xác nhận' ? 'pending' : 'making',
+            state: stateStr,
             startTime: existingState?.startTime || Date.now()
           }
         })
@@ -105,6 +109,22 @@ const KDS = ({ bid, setToast }: { bid: number; setToast: any }) => {
     }
   }
 
+  const sendToShipper = async (orderId: string) => {
+    try {
+      await orderService.updateOrderStatus(orderId, 'Đang giao')
+      // Cập nhật state sang 'shipping' - card vẫn hiển thị trên màn hình
+      setOrderStates(prev => ({
+        ...prev,
+        [orderId]: { state: 'shipping', startTime: prev[orderId]?.startTime || Date.now() }
+      }))
+      setToast({ type: 'success', message: `Đã giao cho shipper: #${orderId}` })
+      console.log('[KDS] Order sent to shipper:', orderId)
+    } catch (e) {
+      console.error('[KDS] Error sending to shipper:', e)
+      setToast({ type: 'error', message: 'Lỗi cập nhật đơn giao hàng' })
+    }
+  }
+
   const getWaitTime = (orderId: string) => {
     const state = orderStates[orderId]
     if (!state) return 0
@@ -147,13 +167,16 @@ const KDS = ({ bid, setToast }: { bid: number; setToast: any }) => {
         const state = orderStates[o.orderid]?.state || 'pending'
         const isPending = state === 'pending'
         const isMaking = state === 'making'
+        const isShipping = state === 'shipping'
+        const isDelivery = o.ordertype === 'Giao hàng'
         const waitTime = getWaitTime(o.orderid)
         const elapsedTime = getElapsedTime(o.orderdate)
         
         console.log('[KDS] Order detail:', { orderid: o.orderid, orderdetails: o.orderdetails, orderdate: o.orderdate, elapsedTime })
         
+        const borderColor = isPending ? '#F59E0B' : isMaking ? PINK : isShipping ? '#2563EB' : '#DDD'
         return (
-          <div key={o.orderid} style={{ backgroundColor: '#fff', borderRadius: '16px', border: `3px solid ${isPending ? '#FFA500' : isMaking ? PINK : '#DDD'}`, boxShadow: '0 2px 8px rgba(240, 97, 146, 0.1)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
+          <div key={o.orderid} style={{ backgroundColor: '#fff', borderRadius: '16px', border: `3px solid ${borderColor}`, boxShadow: '0 2px 8px rgba(240, 97, 146, 0.1)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
             {/* Elapsed Time Badge */}
             <div style={{ position: 'absolute', top: '12px', right: '12px', backgroundColor: '#333', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', fontFamily: 'monospace' }}>
               {elapsedTime}
@@ -174,7 +197,7 @@ const KDS = ({ bid, setToast }: { bid: number; setToast: any }) => {
                 {o.customers?.fullname || 'Khách lẻ'}
               </div>
               <div style={{ fontSize: '10px', fontWeight: '500', color: GRAY, marginTop: '2px' }}>
-                {isPending ? 'Chờ xác nhận' : 'Đang làm'}
+                {isPending ? 'Chờ xác nhận' : isMaking ? 'Đang làm' : 'Đang giao'}
               </div>
             </div>
 
@@ -220,56 +243,102 @@ const KDS = ({ bid, setToast }: { bid: number; setToast: any }) => {
               </div>
             )}
 
-            {/* Action Buttons */}
+            {/* Action Buttons - Logic 2 luồng */}
             <div style={{ display: 'flex', gap: '12px', marginTop: 'auto' }}>
+              {/* Nút 1: BẮT ĐẦU LÀM (xanh dương) - Cả 2 luồng khi Chờ xác nhận */}
               {isPending && (
-                <button 
-                  onClick={() => startMaking(o.orderid)} 
-                  style={{ 
-                    flex: 1, 
-                    padding: '10px', 
-                    backgroundColor: '#0284c7', 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '10px', 
-                    fontSize: '13px', 
-                    fontWeight: '700', 
-                    cursor: 'pointer', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: '6px',
-                    transition: 'all 0.2s'
+                <button
+                  onClick={() => startMaking(o.orderid)}
+                  style={{
+                    flex: 1,
+                    padding: '13px',
+                    background: '#3B82F6',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                    fontFamily: '"Be Vietnam Pro", sans-serif',
+                    transition: 'opacity 0.15s'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0369a1'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                 >
-                  <Play size={16} />Bắt đầu
+                  BẮT ĐẦU LÀM
                 </button>
               )}
-              {(isPending || isMaking) && (
-                <button 
-                  onClick={() => complete(o.orderid)} 
-                  style={{ 
-                    flex: 1, 
-                    padding: '10px', 
-                    backgroundColor: PINK, 
-                    color: '#fff', 
-                    border: 'none', 
-                    borderRadius: '10px', 
-                    fontSize: '13px', 
-                    fontWeight: '700', 
-                    cursor: 'pointer', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: '6px',
-                    transition: 'all 0.2s'
+              {/* Nút 2a: Luồng TẠI CHỖ - Đang làm → HOÀN THÀNH (hồng) */}
+              {isMaking && !isDelivery && (
+                <button
+                  onClick={() => complete(o.orderid)}
+                  style={{
+                    flex: 1,
+                    padding: '13px',
+                    background: '#f06192',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                    fontFamily: '"Be Vietnam Pro", sans-serif',
+                    transition: 'opacity 0.15s'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E64B7F'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = PINK}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                 >
-                  <Check size={16} />Hoàn thành
+                  HOÀN THÀNH
+                </button>
+              )}
+              {/* Nút 2b: Luồng GIAO HÀNG - Đang làm → GIAO CHO SHIPPER (vàng cam) */}
+              {isMaking && isDelivery && (
+                <button
+                  onClick={() => sendToShipper(o.orderid)}
+                  style={{
+                    flex: 1,
+                    padding: '13px',
+                    background: '#F59E0B',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                    fontFamily: '"Be Vietnam Pro", sans-serif',
+                    transition: 'opacity 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  GIAO CHO SHIPPER
+                </button>
+              )}
+              {/* Nút 3: Luồng GIAO HÀNG - Đang giao → HOÀN THÀNH (hồng) */}
+              {isShipping && (
+                <button
+                  onClick={() => complete(o.orderid)}
+                  style={{
+                    flex: 1,
+                    padding: '13px',
+                    background: '#f06192',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    letterSpacing: '0.04em',
+                    fontFamily: '"Be Vietnam Pro", sans-serif',
+                    transition: 'opacity 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >
+                  HOÀN THÀNH
                 </button>
               )}
             </div>

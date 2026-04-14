@@ -54,6 +54,15 @@
 25. **`reviews` (Đánh giá):** `reviewid` (int8, PK), `rating`, `comment`, `createdat`, `customerid` (FK), `orderid` (FK), `productid` (FK), `sentiment` (varchar): Kết quả AI phân tích ('Tích cực', 'Tiêu cực', 'Trung lập').
 26. **`_migrations`:** Bảng hệ thống quản lý lịch sử database.
 
+
+27. **`feedbacks`:** (Hòm thư tâm tình Lamians)
+id (uuid, PK): ID định danh duy nhất (tự động sinh).
+customerid (uuid, FK): Liên kết với tài khoản khách hàng (auth.users).
+displayname (varchar): Biệt hiệu khách đặt để hiển thị công khai.
+content (text): Nội dung lời nhắn/góp ý.
+is_visible (bool): Trạng thái kiểm duyệt (True: Hiện lên web khách, False: Ẩn).
+createdat (timestamptz): Thời gian gửi tin nhắn.
+sentiment (varchar): Kết quả AI phân tích cảm xúc (Mặc định: NULL)
 ---
 
 ## 3. SƠ ĐỒ LIÊN KẾT & QUAN HỆ (RELATIONSHIPS)
