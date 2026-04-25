@@ -45,7 +45,7 @@ export const DeliveryAddressInput: React.FC<DeliveryAddressInputProps> = ({
   const [loadingDistance, setLoadingDistance] = useState(false)
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Close dropdown when clicking outside
   useEffect(() => {
