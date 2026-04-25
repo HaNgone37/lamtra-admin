@@ -142,9 +142,12 @@ export default function Inventory() {
       if (isSuperAdmin) {
         console.log('[ROLE] Super Admin - loading all branches')
         const branchesData = await branchService.getActiveBranches()
-        setBranches(branchesData || [])
+        setBranches((branchesData || []).map(branch => ({
+          ...branch,
+          branchid: String(branch.branchid),
+        })))
         if (branchesData && branchesData.length > 0) {
-          setSelectedBranch(branchesData[0].branchid)
+          setSelectedBranch(String(branchesData[0].branchid))
           console.log('[SUCCESS] First branch set:', branchesData[0].branchid)
         }
       } else {
@@ -153,7 +156,7 @@ export default function Inventory() {
           const branchData = await branchService.getBranchById(userBranchId)
           console.log('[DATA] Branch received:', branchData)
           if (branchData) {
-            setBranches([branchData])
+            setBranches([{ ...branchData, branchid: String(branchData.branchid) }])
             setSelectedBranch(userBranchId)
             console.log('[SUCCESS] Manager branch set:', userBranchId)
           } else {

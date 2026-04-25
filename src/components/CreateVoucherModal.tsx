@@ -164,7 +164,8 @@ export default function CreateVoucherModal({ isOpen, onClose, onSuccess, onError
           alignItems: 'center',
           padding: '24px',
           borderBottom: `1px solid ${COLORS.pink_light}`,
-          sticky: 'top',
+          position: 'sticky',
+          top: 0,
           backgroundColor: COLORS.white,
           borderRadius: '24px 24px 0 0'
         }}>

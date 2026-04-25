@@ -399,8 +399,8 @@ export const recipeService = {
         productid: data.productid,
         ingredientid: data.ingredientid,
         amount: data.amount,
-        product: data.products,
-        ingredient: data.ingredients,
+        product: (Array.isArray(data.products) ? data.products[0] : data.products) as Product,
+        ingredient: (Array.isArray(data.ingredients) ? data.ingredients[0] : data.ingredients) as Ingredient,
       }
     } catch (error) {
       console.error('❌ Error creating recipe:', error)
@@ -440,8 +440,8 @@ export const recipeService = {
         productid: data.productid,
         ingredientid: data.ingredientid,
         amount: data.amount,
-        product: data.products,
-        ingredient: data.ingredients,
+        product: (Array.isArray(data.products) ? data.products[0] : data.products) as Product,
+        ingredient: (Array.isArray(data.ingredients) ? data.ingredients[0] : data.ingredients) as Ingredient,
       }
     } catch (error) {
       console.error('❌ Error updating recipe:', error)

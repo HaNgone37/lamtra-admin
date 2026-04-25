@@ -901,7 +901,7 @@ export const StaffPOS: React.FC = () => {
           onApplyVoucher={handleApplyVoucher}
           onClearVoucher={handleClearVoucher}
           isValidating={isValidatingVoucher}
-          errorMessage={voucherError}
+          errorMessage={voucherError ?? undefined}
         />
 
         {/* ─── ORDER NOTE ─── */}
