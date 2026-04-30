@@ -209,7 +209,7 @@ const KDSOrderCard: React.FC<KDSOrderCardProps> = ({ order, onUpdateStatus, isUp
             whiteSpace: 'nowrap',
           }}
         >
-          {isWaiting ? '⏳ Chờ' : '🔥 Đang làm'}
+          {isWaiting ? 'Chờ' : 'Đang làm'}
         </span>
       </div>
 
@@ -638,7 +638,7 @@ const StaffDashboard: React.FC = () => {
             >
               <Bell size={22} />
               <div>
-                <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>🛎️ Đơn hàng mới!</p>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>Đơn hàng mới!</p>
                 {toast.orderId && (
                   <p style={{ margin: '2px 0 0 0', fontSize: 12, opacity: 0.85 }}>
                     #{`LT-${toast.orderId.substring(0, 6).toUpperCase()}`}

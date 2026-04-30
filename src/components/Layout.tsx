@@ -86,22 +86,6 @@ export const Layout: React.FC<LayoutProps> = ({
 
           {/* Right Section - Notifications + User */}
           <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <button
-              className="relative p-2.5 rounded-lg transition-all duration-200 hover:bg-gray-50"
-              style={{ color: '#4318FF' }}
-            >
-              <Bell size={20} />
-              {notificationCount > 0 && (
-                <span
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full text-white text-xs font-bold flex items-center justify-center animate-pulse"
-                  style={{ backgroundColor: '#FF4444' }}
-                >
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </span>
-              )}
-            </button>
-
             {/* Divider */}
             <div
               className="hidden sm:block h-6 w-px"
