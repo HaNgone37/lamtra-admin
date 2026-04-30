@@ -5,10 +5,12 @@ import type { VoucherStatistic, Voucher, Customer } from '@/services/voucherServ
 import { supabase } from '@/utils/supabaseClient'
 import Toast from '@/components/Toast'
 import CreateVoucherModal from '@/components/CreateVoucherModal'
+import UnifiedDeleteModal from '@/components/UnifiedDeleteModal'
 import { VouchersStatsTab } from '@/components/vouchers/VouchersStatsTab'
 import { VouchersDistributionTab } from '@/components/vouchers/VouchersDistributionTab'
 import { VouchersPointsTab } from '@/components/vouchers/VouchersPointsTab'
 import { VouchersWelcomeTab } from '@/components/vouchers/VouchersWelcomeTab'
+import { checkVoucherDependencies, type DependencyCheckResult } from '@/utils/dependencyValidator'
 
 // Horizon UI Theme Colors
 const COLORS = {
@@ -51,6 +53,12 @@ export default function Vouchers() {
   const [welcomeVouchers, setWelcomeVouchers] = useState<any[]>([])
   const [welcomeLoading, setWelcomeLoading] = useState(false)
   const [welcomeSaving, setWelcomeSaving] = useState(false)
+
+  // ============= DEPENDENCY WARNING MODAL STATES =============
+  const [dependencyWarningOpen, setDependencyWarningOpen] = useState(false)
+  const [dependencyCheckResult, setDependencyCheckResult] = useState<DependencyCheckResult | null>(null)
+  const [pendingDeleteVoucher, setPendingDeleteVoucher] = useState<{ id: number; code: string } | null>(null)
+  const [dependencyCheckLoading, setDependencyCheckLoading] = useState(false)
 
   // ===== TAB 1: STATISTICS =====
   const loadStatistics = async () => {
@@ -300,6 +308,46 @@ export default function Vouchers() {
     setToast({ message, type: 'error' })
   }
 
+  // ============= DELETE VOUCHER HANDLERS =============
+  const handleDeleteVoucher = async (voucherId: number, voucherCode: string) => {
+    try {
+      setDependencyCheckLoading(true)
+      const result = await checkVoucherDependencies(voucherId)
+      
+      setDependencyCheckResult(result)
+      setPendingDeleteVoucher({ id: voucherId, code: voucherCode })
+      setDependencyWarningOpen(true)
+    } catch (error) {
+      console.error('Error checking voucher dependencies:', error)
+      setToast({ message: 'Lỗi khi kiểm tra dữ liệu liên quan', type: 'error' })
+    } finally {
+      setDependencyCheckLoading(false)
+    }
+  }
+
+  const confirmDeleteVoucher = async () => {
+    if (!pendingDeleteVoucher) return
+    
+    try {
+      setDependencyCheckLoading(true)
+      await voucherService.deleteVoucher(pendingDeleteVoucher.id)
+      setToast({ message: 'Xóa voucher thành công', type: 'success' })
+      await loadStatistics()
+      if (activeTab === 'points') {
+        await loadPointsVouchers()
+      } else if (activeTab === 'welcome') {
+        await loadWelcomeVouchers()
+      }
+      setDependencyWarningOpen(false)
+      setPendingDeleteVoucher(null)
+    } catch (error) {
+      console.error('Error deleting voucher:', error)
+      setToast({ message: 'Lỗi khi xóa voucher', type: 'error' })
+    } finally {
+      setDependencyCheckLoading(false)
+    }
+  }
+
   // Initial loads
   useEffect(() => {
     if (activeTab === 'stats') {
@@ -413,6 +461,7 @@ export default function Vouchers() {
           <VouchersStatsTab
             stats={stats}
             isLoading={statsLoading}
+            onDelete={handleDeleteVoucher}
           />
         )}
 
@@ -480,6 +529,30 @@ export default function Vouchers() {
           onError={handleCreateVoucherError}
         />
       </div>
+
+      {/* Dependency Warning Modal */}
+      <UnifiedDeleteModal
+        isOpen={dependencyWarningOpen}
+        itemName={`${pendingDeleteVoucher?.code || ''}`}
+        itemType="Voucher"
+        dependencyResult={dependencyCheckResult}
+        onClose={() => {
+          setDependencyWarningOpen(false)
+          setPendingDeleteVoucher(null)
+          setDependencyCheckResult(null)
+        }}
+        onConfirmDelete={confirmDeleteVoucher}
+        isLoading={dependencyCheckLoading}
+      />
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }

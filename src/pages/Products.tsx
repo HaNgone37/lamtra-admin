@@ -8,7 +8,15 @@ import EditProductModal from '@/components/EditProductModal'
 import CategoryModal from '@/components/CategoryModal'
 import SizeModal from '@/components/SizeModal'
 import ToppingModal from '@/components/ToppingModal'
+import UnifiedDeleteModal from '@/components/UnifiedDeleteModal'
 import { productService, categoryService, sizeService, toppingService, branchProductStatusService } from '@/services/productService'
+import {
+  checkProductDependencies,
+  checkCategoryDependencies,
+  checkSizeDependencies,
+  checkToppingDependencies,
+  type DependencyCheckResult
+} from '@/utils/dependencyValidator'
 
 // ============= TYPES =============
 interface ProductWithBranchStatus extends Product {
@@ -192,6 +200,12 @@ export const Products: React.FC = () => {
   const [selectedTopping, setSelectedTopping] = useState<Topping | null>(null)
   const [toppingStatusLoading, setToppingStatusLoading] = useState<string | null>(null)
 
+  // ============= DEPENDENCY WARNING MODAL STATES =============
+  const [dependencyWarningOpen, setDependencyWarningOpen] = useState(false)
+  const [dependencyCheckResult, setDependencyCheckResult] = useState<DependencyCheckResult | null>(null)
+  const [pendingDeleteItem, setPendingDeleteItem] = useState<{ type: string; id: string | number; name: string } | null>(null)
+  const [dependencyCheckLoading, setDependencyCheckLoading] = useState(false)
+
   // ============= GET ROLE & BRANCH INFO =============
   useEffect(() => {
     const roleStr = localStorage.getItem('userRole') || ''
@@ -303,15 +317,38 @@ export const Products: React.FC = () => {
 
   // ============= PRODUCT HANDLERS =============
   const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return
-
     try {
-      await productService.deleteProduct(productId)
+      setDependencyCheckLoading(true)
+      const result = await checkProductDependencies(productId)
+      
+      const productName = products.find(p => String(p.productid) === productId)?.name || 'Sản phẩm'
+      
+      setDependencyCheckResult(result)
+      setPendingDeleteItem({ type: 'product', id: productId, name: productName })
+      setDependencyWarningOpen(true)
+    } catch (error) {
+      console.error('Error checking product dependencies:', error)
+      showToast('Lỗi khi kiểm tra dữ liệu liên quan', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
+    }
+  }
+
+  const confirmDeleteProduct = async () => {
+    if (!pendingDeleteItem) return
+    
+    try {
+      setDependencyCheckLoading(true)
+      await productService.deleteProduct(String(pendingDeleteItem.id))
       showToast('Xóa sản phẩm thành công', 'success')
       await loadProducts()
+      setDependencyWarningOpen(false)
+      setPendingDeleteItem(null)
     } catch (error) {
       console.error('Error deleting product:', error)
       showToast('Lỗi khi xóa sản phẩm', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
     }
   }
 
@@ -333,43 +370,112 @@ export const Products: React.FC = () => {
 
   // ============= CATEGORY HANDLERS =============
   const handleDeleteCategory = async (categoryId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return
-
     try {
-      await categoryService.deleteCategory(categoryId)
+      setDependencyCheckLoading(true)
+      const result = await checkCategoryDependencies(categoryId)
+      
+      const categoryName = categories.find(c => String(c.categoryid) === categoryId)?.name || 'Danh mục'
+      
+      setDependencyCheckResult(result)
+      setPendingDeleteItem({ type: 'category', id: categoryId, name: categoryName })
+      setDependencyWarningOpen(true)
+    } catch (error) {
+      console.error('Error checking category dependencies:', error)
+      showToast('Lỗi khi kiểm tra dữ liệu liên quan', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
+    }
+  }
+
+  const confirmDeleteCategory = async () => {
+    if (!pendingDeleteItem) return
+    
+    try {
+      setDependencyCheckLoading(true)
+      await categoryService.deleteCategory(String(pendingDeleteItem.id))
       showToast('Xóa danh mục thành công', 'success')
       await loadCategories()
+      setDependencyWarningOpen(false)
+      setPendingDeleteItem(null)
     } catch (error) {
       console.error('Error deleting category:', error)
       showToast('Lỗi khi xóa danh mục', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
     }
   }
 
   // ============= SIZE HANDLERS =============
   const handleDeleteSize = async (sizeId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa kích thước này?')) return
-
     try {
-      await sizeService.deleteSize(sizeId)
+      setDependencyCheckLoading(true)
+      const result = await checkSizeDependencies(sizeId)
+      
+      const sizeName = sizes.find(s => String(s.sizeid) === sizeId)?.name || 'Kích thước'
+      
+      setDependencyCheckResult(result)
+      setPendingDeleteItem({ type: 'size', id: sizeId, name: sizeName })
+      setDependencyWarningOpen(true)
+    } catch (error) {
+      console.error('Error checking size dependencies:', error)
+      showToast('Lỗi khi kiểm tra dữ liệu liên quan', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
+    }
+  }
+
+  const confirmDeleteSize = async () => {
+    if (!pendingDeleteItem) return
+    
+    try {
+      setDependencyCheckLoading(true)
+      await sizeService.deleteSize(String(pendingDeleteItem.id))
       showToast('Xóa kích thước thành công', 'success')
       await loadSizes()
+      setDependencyWarningOpen(false)
+      setPendingDeleteItem(null)
     } catch (error) {
       console.error('Error deleting size:', error)
       showToast('Lỗi khi xóa kích thước', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
     }
   }
 
   // ============= TOPPING HANDLERS =============
   const handleDeleteTopping = async (toppingId: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa topping này?')) return
-
     try {
-      await toppingService.deleteTopping(toppingId)
+      setDependencyCheckLoading(true)
+      const result = await checkToppingDependencies(toppingId)
+      
+      const toppingName = toppings.find(t => String(t.toppingid) === toppingId)?.name || 'Topping'
+      
+      setDependencyCheckResult(result)
+      setPendingDeleteItem({ type: 'topping', id: toppingId, name: toppingName })
+      setDependencyWarningOpen(true)
+    } catch (error) {
+      console.error('Error checking topping dependencies:', error)
+      showToast('Lỗi khi kiểm tra dữ liệu liên quan', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
+    }
+  }
+
+  const confirmDeleteTopping = async () => {
+    if (!pendingDeleteItem) return
+    
+    try {
+      setDependencyCheckLoading(true)
+      await toppingService.deleteTopping(String(pendingDeleteItem.id))
       showToast('Xóa topping thành công', 'success')
       await loadToppings()
+      setDependencyWarningOpen(false)
+      setPendingDeleteItem(null)
     } catch (error) {
       console.error('Error deleting topping:', error)
       showToast('Lỗi khi xóa topping', 'error')
+    } finally {
+      setDependencyCheckLoading(false)
     }
   }
 
@@ -984,6 +1090,37 @@ export const Products: React.FC = () => {
           loadToppings()
         }}
         onError={msg => showToast(msg, 'error')}
+      />
+
+      {/* Dependency Warning Modal */}
+      <UnifiedDeleteModal
+        isOpen={dependencyWarningOpen}
+        itemName={pendingDeleteItem?.name || ''}
+        itemType={
+          pendingDeleteItem?.type === 'product' ? 'Sản phẩm' :
+          pendingDeleteItem?.type === 'category' ? 'Danh mục' :
+          pendingDeleteItem?.type === 'size' ? 'Kích thước' :
+          pendingDeleteItem?.type === 'topping' ? 'Topping' :
+          'Mục'
+        }
+        dependencyResult={dependencyCheckResult}
+        onClose={() => {
+          setDependencyWarningOpen(false)
+          setPendingDeleteItem(null)
+          setDependencyCheckResult(null)
+        }}
+        onConfirmDelete={() => {
+          if (pendingDeleteItem?.type === 'product') {
+            confirmDeleteProduct()
+          } else if (pendingDeleteItem?.type === 'category') {
+            confirmDeleteCategory()
+          } else if (pendingDeleteItem?.type === 'size') {
+            confirmDeleteSize()
+          } else if (pendingDeleteItem?.type === 'topping') {
+            confirmDeleteTopping()
+          }
+        }}
+        isLoading={dependencyCheckLoading}
       />
 
       {/* Toast Notification */}

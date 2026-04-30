@@ -428,5 +428,19 @@ export const voucherService = {
       console.error('❌ Error fetching multiple vouchers:', error)
       return []
     }
+  },
+
+  async deleteVoucher(voucherId: number | string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('vouchers')
+        .delete()
+        .eq('voucherid', voucherId)
+
+      if (error) throw error
+    } catch (error) {
+      console.error('❌ Error deleting voucher:', error)
+      throw error
+    }
   }
 }

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Ticket, Users, Gift, Coins } from 'lucide-react'
+import { Ticket, Users, Gift, Coins, Trash2 } from 'lucide-react'
 import type { VoucherStatistic } from '@/services/voucherService'
 import { voucherService } from '@/services/voucherService'
 
@@ -20,9 +20,10 @@ const COLORS = {
 interface VouchersStatsTabProps {
   stats: VoucherStatistic[]
   isLoading: boolean
+  onDelete?: (voucherId: number, voucherCode: string) => void
 }
 
-export const VouchersStatsTab: React.FC<VouchersStatsTabProps> = ({ stats, isLoading }) => {
+export const VouchersStatsTab: React.FC<VouchersStatsTabProps> = ({ stats, isLoading, onDelete }) => {
   if (isLoading) {
     return (
       <div style={{ textAlign: 'center', padding: '40px', color: COLORS.textLight }}>
@@ -108,6 +109,7 @@ export const VouchersStatsTab: React.FC<VouchersStatsTabProps> = ({ stats, isLoa
                 <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Tỷ Lệ</th>
                 <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Loại Chương Trình</th>
                 <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Tình Trạng Hạn</th>
+                <th style={{ padding: '16px 18px', textAlign: 'center', fontWeight: '600', color: COLORS.text }}>Hành Động</th>
               </tr>
             </thead>
             <tbody>
@@ -188,6 +190,37 @@ export const VouchersStatsTab: React.FC<VouchersStatsTabProps> = ({ stats, isLoa
                       }}>
                         {isValid ? 'Còn hiệu lực' : 'Đã hết hạn'}
                       </div>
+                    </td>
+                    <td style={{ padding: '16px 18px', textAlign: 'center' }}>
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(stat.voucherid, stat.code)}
+                          style={{
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            color: '#EF4444',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#FEE2E2'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                          title="Xóa voucher"
+                        >
+                          <Trash2 size={16} />
+                          Xóa
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
